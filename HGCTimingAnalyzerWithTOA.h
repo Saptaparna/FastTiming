@@ -104,6 +104,9 @@
 #include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingVertex.h"
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
+
 //
 // class declaration
 //
@@ -138,37 +141,39 @@ class HGCTimingAnalyzerWithTOA : public edm::one::EDAnalyzer<edm::one::SharedRes
       virtual void endJob() override;
       void setTreeCellSize(const size_t);
       // ----------member data ---------------------------
-      Int_t run_,event_,lumi_,vertex_nTracks;
+      Int_t run_,event_,lumi_,vertex_nTracks, reachedEE_;
       Float_t vertex_x, vertex_y, vertex_z, vertex_pt, vertex_nChi2;
-      std::vector<float> recHit_x;
-      std::vector<float> recHit_y; 
-      std::vector<float> recHit_z;
-      std::vector<float> recHit_energy; 
-      std::vector<float> recHit_time;
-      std::vector<float> recHit_smear;
-      std::vector<float> recHit_smearedTime;
-      std::vector<float> recHit_soverN;
-      std::vector<float> recHit_rmsTime;
-      std::vector<float> recHit_deltaTime;
-      std::vector<float> recHit_pt;
-      std::vector<float> recHit_eta;
-      std::vector<float> recHit_phi;
-      std::vector<float> genParticle_eta;
-      std::vector<float> genParticle_phi;
-      std::vector<float> genParticle_pdgId;
-      std::vector<float> cluster_x;
-      std::vector<float> cluster_y;
-      std::vector<float> cluster_z;
-      std::vector<float> cluster_energy;
-      std::vector<float> cluster_time;
-      std::vector<float> cluster_layer;
-      std::vector<float> cluster_eta;
-      std::vector<float> simCluster_eta;
-      std::vector<float> simCluster_phi;
-      std::vector<float> simCluster_energy;
-      std::vector<float> simCluster_pt;
-      std::vector<float> simCluster_simEnergy;
-      std::vector<float> recHit_layer;
+      std::vector<double> recHit_x;
+      std::vector<double> recHit_y; 
+      std::vector<double> recHit_z;
+      std::vector<double> recHit_energy; 
+      std::vector<double> recHit_time;
+      std::vector<double> recHit_smear;
+      std::vector<double> recHit_smearedTime;
+      std::vector<double> recHit_soverN;
+      std::vector<double> recHit_rmsTime;
+      std::vector<double> recHit_deltaTime;
+      std::vector<double> recHit_pt;
+      std::vector<double> recHit_eta;
+      std::vector<double> recHit_phi;
+      std::vector<double> genParticle_eta;
+      std::vector<double> genParticle_phi;
+      std::vector<double> genParticle_pdgId;
+      std::vector<double> cluster_x;
+      std::vector<double> cluster_y;
+      std::vector<double> cluster_z;
+      std::vector<double> cluster_energy;
+      std::vector<double> cluster_time;
+      std::vector<double> cluster_layer;
+      std::vector<double> cluster_eta;
+      std::vector<double> simCluster_eta;
+      std::vector<double> simCluster_phi;
+      std::vector<double> simCluster_energy;
+      std::vector<double> simCluster_pt;
+      std::vector<double> simCluster_simEnergy;
+      std::vector<double> recHit_layer;
+      std::vector<double> recHit_energyMIP;
+      std::vector<int> recHit_id;
       TLorentzVector *genVertex_;
       TBranch *branch_;      
       TTree *tree_; 
@@ -185,6 +190,7 @@ class HGCTimingAnalyzerWithTOA : public edm::one::EDAnalyzer<edm::one::SharedRes
       edm::EDGetTokenT<edm::SortedCollection<HGCRecHit> > srcRecHitEE_;
       edm::EDGetTokenT<edm::SortedCollection<HGCRecHit> > srcRecHitHEF_;
       edm::EDGetTokenT<edm::SortedCollection<HGCRecHit> > srcRecHitBH_;
+      edm::EDGetTokenT<std::vector<TrackingParticle> > _part;
       hgcal::RecHitTools recHitTools;
       edm::ESHandle<CaloGeometry> pG;
       double tdcOnset_fC_;
@@ -193,16 +199,16 @@ class HGCTimingAnalyzerWithTOA : public edm::one::EDAnalyzer<edm::one::SharedRes
       int nhits_bh;
       TF1* timeResolution;
   
-      float paramA[3];
-      float parErrA[3];
-      float paramC[3];
-      float parErrC[3];
-      float eneryDegradation[3]; 
-      std::vector<float> scaleCorrection;
-      std::vector<float> weights;
+      double paramA[3];
+      double parErrA[3];
+      double paramC[3];
+      double parErrC[3];
+      double energyDegradation[3]; 
+      std::vector<double> scaleCorrection;
+      std::vector<double> weights;
   
-      float keV2GeV;
-      float keV2MeV;
+      double keV2GeV;
+      double keV2MeV;
   
       double keV2fC[2];
       double keV2MIP;

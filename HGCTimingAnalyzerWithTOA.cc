@@ -19,7 +19,8 @@ HGCTimingAnalyzerWithTOA::HGCTimingAnalyzerWithTOA(const edm::ParameterSet& iCon
     srcCaloParticle_ (consumes<std::vector<CaloParticle> >(iConfig.getParameter<edm::InputTag> ("srcCaloParticle"))),
     srcRecHitEE_ (consumes<edm::SortedCollection<HGCRecHit> >(iConfig.getParameter<edm::InputTag> ("srcRecHitEE"))),
     srcRecHitHEF_ (consumes<edm::SortedCollection<HGCRecHit> >(iConfig.getParameter<edm::InputTag> ("srcRecHitHEF"))),
-    srcRecHitBH_ (consumes<edm::SortedCollection<HGCRecHit> >(iConfig.getParameter<edm::InputTag> ("srcRecHitBH")))
+    srcRecHitBH_ (consumes<edm::SortedCollection<HGCRecHit> >(iConfig.getParameter<edm::InputTag> ("srcRecHitBH"))),
+    _part (consumes<std::vector<TrackingParticle> >(iConfig.getParameter<edm::InputTag> ("srcPartHandle")))  
 {
    usesResource("TFileService");
    const edm::ParameterSet& geometryConfig = iConfig.getParameterSet("TriggerGeometry");
@@ -34,18 +35,26 @@ HGCTimingAnalyzerWithTOA::HGCTimingAnalyzerWithTOA(const edm::ParameterSet& iCon
    noisefC[0] = (iConfig.getParameter<std::vector<double> >("HGCEE_noisefC")).at(0);
    noisefC[1] = (iConfig.getParameter<std::vector<double> >("HGCEF_noisefC")).at(1);
    noiseMIP = iConfig.getParameter<double>("HGCBH_noiseMIP");
-
+   //std::cout << "noisefC[0] = " << noisefC[0] << std::endl;
+   //std::cout << "noisefC[1] = " << noisefC[1] << std::endl;
    //cell type
    fCPerMIP[0] =  (iConfig.getParameter<std::vector<double> >("HGCEE_fCPerMIP")).at(0);
    fCPerMIP[1] =  (iConfig.getParameter<std::vector<double> >("HGCEE_fCPerMIP")).at(1);
    fCPerMIP[2] =  (iConfig.getParameter<std::vector<double> >("HGCEE_fCPerMIP")).at(2);
-
+   //std::cout << "fCPerMIP[0] = " << fCPerMIP[0] << std::endl;
+   //std::cout << "fCPerMIP[1] = " << fCPerMIP[1] << std::endl;
+   //std::cout << "fCPerMIP[2] = " << fCPerMIP[2] << std::endl;  
+ 
    const auto& rcorr = iConfig.getParameter<std::vector<double> >("thicknessCorrection");
    scaleCorrection.clear();
    scaleCorrection.push_back(1.f);
    for( auto corr : rcorr ) {
      scaleCorrection.push_back(1.0/corr);
    }
+   //std::cout << "scaleCorrection.at(0) = " << scaleCorrection.at(0) << std::endl;
+   //std::cout << "scaleCorrection.at(1) = " << scaleCorrection.at(1) << std::endl;
+   //std::cout << "scaleCorrection.at(2) = " << scaleCorrection.at(2) << std::endl;
+   //std::cout << "scaleCorrection.at(3) = " << scaleCorrection.at(3) << std::endl;
    const auto& dweights = iConfig.getParameter<std::vector<double> >("dEdXweights");
    for( auto weight : dweights ) {
      weights.push_back(weight);
@@ -72,7 +81,7 @@ HGCTimingAnalyzerWithTOA::HGCTimingAnalyzerWithTOA(const edm::ParameterSet& iCon
    parErrA[2] = 0.02;
    paramC[2] = 0.010;
    parErrC[2] = 0.001;
-*/
+
 
    //100um
    paramA[0] = 1.50;//Jim's corrected number
@@ -95,20 +104,40 @@ HGCTimingAnalyzerWithTOA::HGCTimingAnalyzerWithTOA(const edm::ParameterSet& iCon
    paramC[2] = 0.020;//Jim's point 1, case 1
    //paramC[2] = 0.030;//Jim's point 1 case 2
    parErrC[2] = 0.001;
-/*
-   //100um
-   eneryDegradation[0] = 0.50;
-   //200um
-   eneryDegradation[1] = 0.50;
-   //300um
-   eneryDegradation[2] = 0.70;
-*/
- 
-   eneryDegradation[0] = 1.0;
-   eneryDegradation[1] = 1.0;
-   eneryDegradation[2] = 1.0;
 
-   timeResolution = new TF1("timeSi100", "sqrt(pow([0]/x/sqrt(2.), 2) + pow([1], 2) )", 1., 1000.);                     
+   //100um
+   energyDegradation[0] = 0.50;
+   //200um
+   energyDegradation[1] = 0.50;
+   //300um
+   energyDegradation[2] = 0.70;
+*/
+   //100um
+   paramA[0] = 1.0; //Jim's S/N value of 1000 ps apply uniformly for all cells
+   parErrA[0] = 0.01;
+   paramC[0] = 0.020;//Jim's floor value of 20 ps
+   parErrC[0] = 0.001;
+   //200um
+   paramA[1] = 1.0;//Jim's S/N value of 1000 ps apply uniformly for all cells
+   parErrA[1] = 0.01;
+   paramC[1] = 0.020;//Jim's floor value of 20 ps
+   parErrC[1] = 0.001;
+   //300um
+   paramA[2] = 1.0;//Jim's S/N value of 1000 ps apply uniformly for all cells
+   parErrA[2] = 0.01;
+   paramC[2] = 0.020;//Jim's floor value of 20 ps
+   parErrC[2] = 0.001;
+
+   energyDegradation[0] = 1.0;
+   energyDegradation[1] = 1.0;
+   energyDegradation[2] = 1.0;
+   /*
+   energyDegradation[0] = 0.50;
+   energyDegradation[1] = 0.50;
+   energyDegradation[2] = 0.70;
+   */
+   //timeResolution = new TF1("timeSi100", "sqrt(pow([0]/x/sqrt(2.), 2) + pow([1], 2) )", 1., 1000.);                    
+   timeResolution = new TF1("timeSi100", "sqrt(pow([0]/x, 2) + pow([1], 2) )", 1., 1000.);  
 }
 
 
@@ -161,6 +190,8 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
    recHit_pt.clear();
    recHit_eta.clear();
    recHit_phi.clear();
+   recHit_energyMIP.clear();
+   recHit_id.clear();
 
    edm::Handle<std::vector<SimTrack> > simTk;
    iEvent.getByToken(srcSimTracks_, simTk);
@@ -203,6 +234,32 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
    iSetup.get<IdealGeometryRecord>().get("HGCalEESensitive",geoHandle_ee);
    edm::ESHandle<HGCalGeometry> geoHandle_hef;
    iSetup.get<IdealGeometryRecord>().get("HGCalHESiliconSensitive",geoHandle_hef);
+   //for looking into non-interacting and non-converting particles
+   edm::Handle<std::vector<TrackingParticle> > partHandle;
+   const std::vector<TrackingParticle> *part;
+   iEvent.getByToken(_part, partHandle);
+   part = &(*partHandle);
+
+   unsigned int npart = part->size();
+   std::cout << "npart = " << npart << std::endl;
+   int reachedEE=-999;
+   for(unsigned int i=0; i<npart; ++i) 
+   {
+     reachedEE=-500;
+     // event=0 is the hard scattering (all PU have event()>=1)
+     // bunchCrossing == 0 intime, buncCrossing!=0 offtime, standard generation has [-12,+3]
+     if((*part)[i].eventId().event() ==0 and (*part)[i].eventId().bunchCrossing()==0) 
+     {
+       // default values for decay position is outside detector, i.e. ~stable
+       reachedEE=1;
+       if((*part)[i].decayVertices().size()>=1) 
+       { //they can be delta rays, in this case you have multiple decay verices
+	 if ((*part)[i].decayVertices()[0]->inVolume()) reachedEE=0; //if it decays inside the tracker volume
+         break;
+       }
+     } 
+   }
+   reachedEE_=reachedEE;
 
    //EE 
    for(unsigned int l=0; l<pfCluster->size(); l++) // Iterating over sim clusters
@@ -225,8 +282,6 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
            if(id==detId_recHit_ee.rawId())// and hgcHitEE->time() > 0)
            {
              nhits_ee++;
-             //unsigned int layerSecond = recHitTools.getLayerWithOffset(id);
-             //recHit_layer.push_back(layerSecond);
              const GlobalPoint& recHitPos_ee = geoHandle_ee->getPosition(id); 
              recHit_phi.push_back(recHitTools.getPhi(recHitPos_ee));
              recHit_eta.push_back(recHitTools.getEta(recHitPos_ee, vertex_z));
@@ -235,9 +290,11 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
              recHit_y.push_back(recHitPos_ee.y());
              recHit_z.push_back(recHitPos_ee.z());
              recHit_energy.push_back(hgcHitEE->energy());
+             recHit_id.push_back(id);
              auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_ee));
              int thick = ddd->waferTypeL(detId_recHit_ee.wafer()) - 1;
-             unsigned int layer = detId_recHit_ee.layer();
+             unsigned int layer = recHitTools.getLayerWithOffset(id);
+             //unsigned int layer = detId_recHit_ee.layer();
              recHit_layer.push_back(layer);
              int sectionType;
              sectionType = 2;
@@ -246,13 +303,13 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
              double sigmaNoiseMIP = 0.0;
              sigmaNoiseMIP = noiseMIP;
              if(sectionType != 2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
-             float energyMIP;
-             float energy = hgcHitEE->energy()*eneryDegradation[thick];
+             double energyMIP;
+             double energy = hgcHitEE->energy()*energyDegradation[thick];
              if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
              else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
              if(energyMIP > 3.) 
              {
-               float SoverN = energyMIP / sigmaNoiseMIP;
+               double SoverN = energyMIP / sigmaNoiseMIP;
                double rmsTime = getTimeHit(thick, SoverN);               
 	       TRandom3* rand = new TRandom3();
 	       rand->SetSeed(0);
@@ -262,7 +319,9 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
                recHit_smearedTime.push_back(smearedTime);
                recHit_soverN.push_back(SoverN);
                recHit_rmsTime.push_back(rmsTime);
-               recHit_deltaTime.push_back(deltaTime); 
+               recHit_deltaTime.push_back(deltaTime);
+               recHit_energyMIP.push_back(energyMIP); 
+               //if(hgcHitEE->time()-1 > 0) std::cout << "layer = " << layer << " recHitPos_ee.z() = " << recHitPos_ee.z() << " recHitPos_ee.x() = " << recHitPos_ee.x() << " recHitPos_ee.y() = " << recHitPos_ee.y() << " hgcHitEE->time()-1 = " << hgcHitEE->time()-1 << " energyMIP = " << energyMIP << std::endl;    
              }
              else 
              {
@@ -271,6 +330,7 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
                recHit_soverN.push_back(-99.0);
                recHit_rmsTime.push_back(-99.0);
                recHit_deltaTime.push_back(-99.0);
+               recHit_energyMIP.push_back(-99.0);
              }
            }
          }
@@ -288,14 +348,20 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
            { 
              nhits_hf++;
              const GlobalPoint& recHitPos_hef = geoHandle_hef->getPosition(id);
-             //unsigned int layer = recHitTools.getLayerWithOffset(id);//alternate way to access the layer
+             unsigned int layer = recHitTools.getLayerWithOffset(id);//alternate way to access the layer
+             recHit_phi.push_back(recHitTools.getPhi(recHitPos_hef));
+             recHit_eta.push_back(recHitTools.getEta(recHitPos_hef, vertex_z));
+             recHit_pt.push_back(recHitTools.getPt(recHitPos_hef, hgcHitHEF->energy(), vertex_z));
              recHit_x.push_back(recHitPos_hef.x());
              recHit_y.push_back(recHitPos_hef.y());
              recHit_z.push_back(recHitPos_hef.z());
              recHit_energy.push_back(hgcHitHEF->energy());
+             recHit_id.push_back(id);
              auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_hef));
              int thick = ddd->waferTypeL(detId_recHit_hef.wafer()) - 1;
-             unsigned int layer = detId_recHit_hef.layer();
+             int thick2 = recHitTools.getSiThickness(detId_recHit_hef) / 100. - 1.;
+             if(thick!=thick2) std::cout << "thick = " << thick << ", thick2 = " << thick2 << std::endl;
+             //unsigned int layer = detId_recHit_hef.layer();
              recHit_layer.push_back(layer);
              int sectionType;
              sectionType = 2;
@@ -304,14 +370,14 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
              double sigmaNoiseMIP = 0.0;
              sigmaNoiseMIP = noiseMIP;
              if(sectionType !=2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
-             float energyMIP;
-             //float energy = hgcHitHEF->energy();
-             float energy = hgcHitHEF->energy()*eneryDegradation[thick];
+             double energyMIP;
+             double energy = hgcHitHEF->energy()*energyDegradation[thick];
              if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
              else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
+             //std::cout << "layer = " << layer << " weights.at(layer) = " << weights.at(layer) << std::endl;
              if(energyMIP > 3.)
              {
-               float SoverN = energyMIP / sigmaNoiseMIP;
+               double SoverN = energyMIP / sigmaNoiseMIP;
                double rmsTime = getTimeHit(thick, SoverN);
                TRandom3* rand = new TRandom3();
                rand->SetSeed(0);
@@ -321,7 +387,8 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
                recHit_smearedTime.push_back(smearedTime);
                recHit_soverN.push_back(SoverN);
                recHit_rmsTime.push_back(rmsTime);
-               recHit_deltaTime.push_back(deltaTime);
+               recHit_deltaTime.push_back(deltaTime); 
+               recHit_energyMIP.push_back(energyMIP);
              }
              else
              {
@@ -330,6 +397,7 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
                recHit_soverN.push_back(-99.0);
                recHit_rmsTime.push_back(-99.0);
                recHit_deltaTime.push_back(-99.0);
+               recHit_energyMIP.push_back(-99.0);
              }
            }
          }
@@ -337,20 +405,19 @@ HGCTimingAnalyzerWithTOA::analyze(const edm::Event& iEvent, const edm::EventSetu
     
      for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
      {
-         uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
-         edm::SortedCollection<HGCRecHit>::const_iterator hgcHitBH = srcRecHitBH->find(id);
-         if(hgcHitBH != srcRecHitBH->end())
+       uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+       edm::SortedCollection<HGCRecHit>::const_iterator hgcHitBH = srcRecHitBH->find(id);
+       if(hgcHitBH != srcRecHitBH->end())
+       {
+         const HGCalDetId detId_recHit_bh = hgcHitBH->detid();
+         if(id==detId_recHit_bh.rawId())// and hgcHitHEF->time() > 0)
          {
-           const HGCalDetId detId_recHit_bh = hgcHitBH->detid();
-           if(id==detId_recHit_bh.rawId())// and hgcHitHEF->time() > 0)
-           {
-             nhits_bh++;
-             //recHit_time.push_back(hgcHitBH->time());
-             std::cout << "hgcHitBH->time() = " << hgcHitBH->time() << std::endl;
-           }
+           nhits_bh++;
+           //recHit_time.push_back(hgcHitBH->time());
+           //std::cout << "hgcHitBH->time() = " << hgcHitBH->time() << std::endl;
          }
+       }
      }  
- 
    }
    // loop over caloParticles based on https://github.com/CMS-HGCAL/reco-ntuples/blob/master/HGCalAnalysis/plugins/HGCalAnalysis.cc
    for (std::vector<CaloParticle>::const_iterator it_caloPart = caloParticle->begin(); it_caloPart != caloParticle->end(); ++it_caloPart) 
@@ -374,6 +441,7 @@ void HGCTimingAnalyzerWithTOA::beginJob()
   branch_=tree_->Branch("run",   &run_,   "run/I");
   branch_=tree_->Branch("event", &event_, "event/I");
   branch_=tree_->Branch("lumi",  &lumi_,  "lumi/I");
+  branch_=tree_->Branch("reachedEE", &reachedEE_, "reachedEE/I");
   branch_=tree_->Branch("vertex_x", &vertex_x, "vertex_x/F");
   branch_=tree_->Branch("vertex_y", &vertex_y, "vertex_y/F");
   branch_=tree_->Branch("vertex_z", &vertex_z, "vertex_z/F");
@@ -396,6 +464,8 @@ void HGCTimingAnalyzerWithTOA::beginJob()
   branch_=tree_->Branch("recHit_deltaTime", &recHit_deltaTime);
   branch_=tree_->Branch("recHit_soverN", &recHit_soverN);
   branch_=tree_->Branch("recHit_layer", &recHit_layer);
+  branch_=tree_->Branch("recHit_energyMIP", &recHit_energyMIP);
+  branch_=tree_->Branch("recHit_id", &recHit_id);
   branch_=tree_->Branch("cluster_layer", &cluster_layer);
   branch_=tree_->Branch("cluster_eta", &cluster_eta);
   branch_=tree_->Branch("genParticle_eta", &genParticle_eta);
