@@ -1,5 +1,5 @@
 #include <TF1.h>
-#include <TH1F.h>
+#include <TH1D.h>
 #include <TH2F.h>
 #include <TH3F.h>
 #include <TROOT.h>
@@ -30,14 +30,46 @@ TLorentzVector fillTLorentzVector(double pT, double eta, double phi, double E)
 
 typedef struct
 {
+  double recHitE;
+  double recHitX;
+  double recHitY;
+  double recHitZ;
   double recHitTime;
-  double recHitTimeOld;
+  double recHitSoverN;
+  double recHitRmsTime;
+  double recHitDeltaTime;
+  double recHitSmearedTime; 
 } RecHitInfo;
 
+typedef struct
+{
+  double genParticleEta;
+  double genParticlePhi;
+} genParticleInfo;
+
+bool sortRecHitsInDescendingE(RecHitInfo recHit1, RecHitInfo recHit2)
+{
+  return (recHit1.recHitE > recHit2.recHitE);
+}
 
 bool sortRecHitsInAscendingTime(RecHitInfo recHit1, RecHitInfo recHit2)
 {
   return (recHit1.recHitTime < recHit2.recHitTime);
+}
+
+bool sortRecHitsInAscendingSmearedTime(RecHitInfo recHit1, RecHitInfo recHit2)
+{
+  return (recHit1.recHitSmearedTime < recHit2.recHitSmearedTime);
+}
+
+bool sortRecHitsInAscendingZ(RecHitInfo recHit1, RecHitInfo recHit2)
+{
+  return (fabs(recHit1.recHitZ) < fabs(recHit2.recHitZ));
+}
+
+bool sortRecHitsInAscendingE(RecHitInfo recHit1, RecHitInfo recHit2)
+{
+  return (recHit1.recHitE < recHit2.recHitE);
 }
 
 std::string itoa(int i) 
@@ -59,118 +91,174 @@ bool sameValHighPrecision(double a, double b)
 }
 
 
-int EnergyWeighting(std::string infile, std::string outfile)
+int TruncatedMean(std::string infile, std::string outfile, double fraction, double rhoCut)
 {
   std::string inputfilename=(infile+".root").c_str();
-  TChain *tree=new TChain("ana/HGCTiming");
+  TChain *tree=new TChain("hgctiming/HGCTiming");
   tree->Add(inputfilename.c_str());
   std::cout<<"Opened input file "<<inputfilename<<std::endl;
 
-  Int_t            run;
-  Int_t            event;
-  Int_t            lumi;
-  vector<double>*  Energydiff; 
-  vector<double>*  Timediff;
-  vector<double>*  TimeOld;
-  vector<double>*  Time;
-
-  Energydiff = 0;
-  Timediff = 0;
-  TimeOld = 0;
-  Time = 0;
+  Int_t           run;
+  Int_t           event;
+  Int_t           lumi;
+  Int_t           reachedEE;
+  Float_t         vertex_x;
+  Float_t         vertex_y;
+  Float_t         vertex_z;
+  vector<double>   *recHit_energy;
+  vector<double>   *recHit_x;
+  vector<double>   *recHit_y;
+  vector<double>   *recHit_z;
+  vector<double>   *recHit_time;
+  vector<double>   *recHit_smearedTime;
+  vector<double>   *recHit_soverN;
+  vector<double>   *recHit_rmsTime;
+  vector<double>   *recHit_deltaTime;
+  vector<double>   *cluster_x;
+  vector<double>   *cluster_y;
+  vector<double>   *cluster_z;
+  vector<double>   *cluster_time;
+  vector<double>   *cluster_eta;
+  vector<double>   *simCluster_eta;
+  vector<double>   *simCluster_phi;
+  vector<double>   *genParticle_eta;
+  vector<double>   *genParticle_phi;
+  
+  recHit_energy = 0;
+  recHit_x = 0;
+  recHit_y = 0;
+  recHit_z = 0;
+  recHit_time = 0;
+  recHit_smearedTime = 0;
+  recHit_soverN = 0;
+  recHit_rmsTime = 0;
+  recHit_deltaTime = 0;
+  cluster_x = 0;
+  cluster_y = 0;
+  cluster_z = 0;
+  cluster_time = 0;
+  cluster_eta = 0;
+  simCluster_eta = 0;
+  simCluster_phi = 0;
+  genParticle_eta = 0;
+  genParticle_phi = 0;
 
   tree->SetBranchAddress("run", &(run));
   tree->SetBranchAddress("lumi", &(lumi));
   tree->SetBranchAddress("event", &(event));
-  tree->SetBranchAddress("Energydiff", &(Energydiff));
-  tree->SetBranchAddress("Timediff", &(Timediff));
-  tree->SetBranchAddress("TimeOld", &(TimeOld));
-  tree->SetBranchAddress("Time", &(Time));
+  tree->SetBranchAddress("reachedEE", &(reachedEE));
+  tree->SetBranchAddress("vertex_x", &(vertex_x));
+  tree->SetBranchAddress("vertex_y", &(vertex_y));
+  tree->SetBranchAddress("vertex_z", &(vertex_z));
+  tree->SetBranchAddress("recHit_energy", &(recHit_energy));
+  tree->SetBranchAddress("recHit_x", &(recHit_x));
+  tree->SetBranchAddress("recHit_y", &(recHit_y));
+  tree->SetBranchAddress("recHit_z", &(recHit_z));
+  tree->SetBranchAddress("recHit_time", &(recHit_time));
+  tree->SetBranchAddress("recHit_smearedTime", &(recHit_smearedTime));
+  tree->SetBranchAddress("recHit_soverN", &(recHit_soverN));
+  tree->SetBranchAddress("recHit_rmsTime", &(recHit_rmsTime));
+  tree->SetBranchAddress("recHit_deltaTime", &(recHit_deltaTime));
+  tree->SetBranchAddress("cluster_x", &(cluster_x));
+  tree->SetBranchAddress("cluster_y", &(cluster_y));
+  tree->SetBranchAddress("cluster_z", &(cluster_z));
+  tree->SetBranchAddress("cluster_time", &(cluster_time));
+  tree->SetBranchAddress("cluster_eta", &(cluster_eta));
+  tree->SetBranchAddress("simCluster_eta", &(simCluster_eta));
+  tree->SetBranchAddress("simCluster_phi", &(simCluster_phi));
+  tree->SetBranchAddress("genParticle_eta", &(genParticle_eta));
+  tree->SetBranchAddress("genParticle_phi", &(genParticle_phi));
 
-  TH1F *h_TimeAverage = new TH1F("h_TimeAverage", "h_TimeAverage; Average time [ns]; Events", 200000,  -10.0, 10.0); h_TimeAverage->Sumw2();
-  TH1F *h_TimeAverageOld = new TH1F("h_TimeAverageOld", "h_TimeAverageOld; Average time [ns]; Events", 200000,  -10.0, 10.0); h_TimeAverageOld->Sumw2();
-  TH1F *h_smear = new TH1F("h_smear", "h_smear; smear; Entries", 200000,  -10.0, 10.0); h_smear->Sumw2();
-  TH1F *h_nHits = new TH1F("h_nHits", "h_nHits; Number of hits; Events", 1000, -0.5, 999.5); h_nHits->Sumw2();
-  TH1F *h_recHitTime = new TH1F("h_recHitTime", "h_recHitTime; recHitTime [ns]; Entries", 200000, -10.0, 10.0); h_recHitTime->Sumw2();
+  TH1D *h_TimeAverage = new TH1D("h_TimeAverage", "h_TimeAverage; Average time [ns]; Events", 5000,  -5.0, 5.0); h_TimeAverage->Sumw2();
+  TH1D *h_nHits_afterCut = new TH1D("h_nHits_afterCut", "h_nHits_afterCut; Number of hits; Events", 500, 0.0, 500.0); h_nHits_afterCut->Sumw2(); 
+  TH1D *h_nHits_FullSize = new TH1D("h_nHits_FullSize", "h_nHits_FullSize; Number of hits before removal", 500, 0.0, 500.0); h_nHits_FullSize->Sumw2();
+  TH1D *h_recHit_Time =  new TH1D("h_recHit_Time", "h_recHit_Time; recHit time [ns]; Events", 100, 0.0, 0.1);h_recHit_Time->Sumw2();
+  TH1D *h_soverN = new TH1D("h_soverN", "h_soverN; SoverN; Entries", 40, -10.0, 1000.0); h_soverN->Sumw2(); 
+  TH1D *h_rmsTime = new TH1D("h_rmsTime", "h_rmsTime; rmsTime; Entries", 100, 0.0, 0.1); h_rmsTime->Sumw2();
+  TH1D *h_deltaTime = new TH1D("h_deltaTime", "h_deltaTime; rmsTime; Entries", 10000, -5.0, 5.0); h_deltaTime->Sumw2();
+  TH1D *h_rho = new TH1D("h_rho", "h_rho; rho [cm]; Entries", 100, 0.0, 100.0); h_rho->Sumw2();
+  TH1D *h_recHitX = new TH1D("h_recHitX", "h_recHitX; recHit X [cm]; Entries", 150, 0.0, 150.0);h_recHitX->Sumw2();
+  TH1D *h_recHitY = new TH1D("h_recHitY", "h_recHitY; recHit Y [cm]; Entries", 100, 50.0, -50.0);h_recHitY->Sumw2();
+  TH1D *h_recHitZ = new TH1D("h_recHitZ", "h_recHitZ; recHit Z [cm]; Entries", 100, 300.0, 400.0);h_recHitZ->Sumw2();
 
   int nEvents=tree->GetEntries();
   std::cout << "nEvents= " << nEvents << std::endl;
   for (int ievent=0; ievent<nEvents; ++ievent)
   {
     tree->GetEvent(ievent);
-    //filling the recHit info in a vector of structs
+
+    if(reachedEE==0) continue;
+
     std::vector<RecHitInfo> recHits;
-    int hitNumber = 0.0;
- 
-    for (unsigned int k=0; k<Energydiff->size(); k++)
+    double sumOfEnergy = 0.0;
+
+    for (unsigned int k=0; k<recHit_energy->size(); k++)
     {
       RecHitInfo recHit;
-      recHit.recHitTimeOld = TimeOld->at(k)-1;
-      recHit.recHitTime = Time->at(k);
-      if(TimeOld->at(k) != -1 and Time->at(k) != -1) recHits.push_back(recHit);
+      recHit.recHitE = recHit_energy->at(k);
+      recHit.recHitX = recHit_x->at(k);
+      recHit.recHitY = recHit_y->at(k);
+      recHit.recHitZ = recHit_z->at(k);
+      recHit.recHitTime = recHit_time->at(k);
+      recHit.recHitSoverN = recHit_soverN->at(k);
+      recHit.recHitRmsTime = recHit_rmsTime->at(k);
+      recHit.recHitSmearedTime = recHit_smearedTime->at(k);
+      recHit.recHitDeltaTime = recHit_deltaTime->at(k);
+      if(recHit_time->at(k) > -2.0) sumOfEnergy += recHit_energy->at(k);
+      if(recHit_time->at(k) > -2.0) recHits.push_back(recHit);
     }
 
-    std::sort(recHits.begin(), recHits.end(), sortRecHitsInAscendingTime);
+    std::sort(recHits.begin(), recHits.end(), sortRecHitsInAscendingSmearedTime);
 
-    std::cout << "recHits.size() = " << recHits.size() << std::endl; 
+    //std::cout << "recHits.size() = " << recHits.size() << std::endl; 
    
-    int removeElements = 0.80*recHits.size();
+    h_nHits_FullSize->Fill(recHits.size());
+  
+    int removeElements = fraction*recHits.size(); //try fixed removal first
 
     for(int i=0; i<removeElements; i++)
     {
       recHits.pop_back();
     }
-     
-    std::cout << "reduced recHits.size() = " << recHits.size() << std::endl;
-    
+
+    //std::cout << "reduced recHits.size() = " << recHits.size() << std::endl;
+
     double sumTimeAverage = 0.0;
-    double totalSmearing = 0.0;
-    double sumTimeAverageOld = 0.0;
+    double sumResolution = 0.0;
     int nhits = 0;
     for (unsigned int j=0; j<recHits.size(); j++)
     {
-      double smearing = recHits.at(j).recHitTime/recHits.at(j).recHitTimeOld - 1;
-      if(recHits.at(j).recHitTimeOld > 0.0) h_recHitTime->Fill(recHits.at(j).recHitTime);
-      if(recHits.at(j).recHitTimeOld > 0.0) sumTimeAverage += recHits.at(j).recHitTime*(1.0/(smearing*smearing));
-      if(recHits.at(j).recHitTimeOld > 0.0) totalSmearing += 1.0/(smearing*smearing);
-      if(recHits.at(j).recHitTimeOld > 0.0) nhits++;
-      if(recHits.at(j).recHitTimeOld > 0.0) sumTimeAverageOld += recHits.at(j).recHitTimeOld + gRandom->Gaus(0, 0.05);
-      if(recHits.at(j).recHitTimeOld > 0.0) h_smear->Fill(1.0/(smearing)*(smearing)); 
+      if(recHits.size() >= 3) h_recHitX->Fill(recHits.at(j).recHitX);
+      if(recHits.size() >= 3) h_recHitY->Fill(recHits.at(j).recHitY);
+      if(recHits.size() >= 3) h_recHitZ->Fill(recHits.at(j).recHitZ);
+      double rho = sqrt(pow((recHits.at(j).recHitX-h_recHitX->GetMean()), 2) + pow(recHits.at(j).recHitY, 2));
+      if(recHits.size() >= 3 and rho<rhoCut) h_rho->Fill(rho);
+      if(recHits.size() >= 3 and rho<rhoCut) sumTimeAverage += recHits.at(j).recHitSmearedTime*(1.0/(pow(recHits.at(j).recHitDeltaTime, 2)));
+      if(recHits.size() >= 3 and rho<rhoCut) sumResolution += 1.0/(pow(recHits.at(j).recHitDeltaTime, 2));
+      if(recHits.size() >= 3 and rho<rhoCut) nhits++;
+      if(recHits.size() >= 3 and rho<rhoCut) h_rmsTime->Fill(recHits.at(j).recHitRmsTime);
+      if(recHits.size() >= 3 and rho<rhoCut) h_soverN->Fill(recHits.at(j).recHitSoverN);
+      if(recHits.size() >= 3 and rho<rhoCut) h_deltaTime->Fill(recHits.at(j).recHitSmearedTime-recHits.at(j).recHitTime);
+      if(recHits.size() >= 3 and rho<rhoCut) h_recHit_Time->Fill(recHits.at(j).recHitSmearedTime);
     }
-    if(totalSmearing>0) h_smear->Fill(totalSmearing);
-    //if(totalSmearing>0) h_nHits->Fill(nhits);
-    h_nHits->Fill(recHits.size());
-    //9GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-1.63557434456684803e-02);
-    //8 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-2.07130106784667589e-02);
-    //7 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-2.70781027686943787e-02);
-    //6 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-3.69075531145384161e-02);
-    //5 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-5.32697669522512740e-02);
-    //4 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-8.35900898636587897e-02);
-    //3 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-1.49993049482509022e-01);
-    //2 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-3.46779644449904723e-01);
-    //1 GeV
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing);
-    //if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-1.63580068002320189e+00);
-    if(totalSmearing>0) h_TimeAverage->Fill((sumTimeAverage/totalSmearing)-1.63580068002320189e+00);
-    if(nhits>0) h_TimeAverageOld->Fill(sumTimeAverageOld/nhits);
+    if(nhits>0) h_TimeAverage->Fill(sumTimeAverage/sumResolution);
+    if(nhits>0) h_nHits_afterCut->Fill(recHits.size());
+ 
   }//end of event loop
 
-  
   std::string histfilename=(outfile+".root").c_str();
   TFile *tFile=new TFile(histfilename.c_str(), "RECREATE");
+  h_rho->Write();
+  h_recHitX->Write();
+  h_recHitY->Write();
+  h_recHitZ->Write();
   h_TimeAverage->Write();
-  h_TimeAverageOld->Write();
-  h_smear->Write();
-  h_nHits->Write();
-  h_recHitTime->Write();
+  h_recHit_Time->Write();
+  h_nHits_afterCut->Write();
+  h_nHits_FullSize->Write();
+  h_rmsTime->Write();
+  h_soverN->Write();
+  h_deltaTime->Write();
   tFile->Close();
   std::cout<<"Wrote output file "<<histfilename<<std::endl;
   return 0; 
