@@ -23,7 +23,7 @@ using std::string;
 
 bool sameVal(double a, double b)
 {
-   return fabs(a - b) < 5.000e-00;
+   return fabs(a - b) < 2.000e-00;
 }
 
 bool sameValHighPrecision(double a, double b)
@@ -62,7 +62,7 @@ void computeEffectiveRMS(std::string infile)
     for(int jbin=ibin+1; jbin < h1->GetNbinsX()+1; jbin++)
     {
       double fractionalArea = (double)(h1->Integral(ibin, jbin))*100.0/(double)h1->Integral();  
-      if(fractionalArea>=OneSigma)
+      if(sameVal(fractionalArea, OneSigma))
       {
         binInfo bin;
         bin.leftEdge=ibin;
