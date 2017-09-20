@@ -161,6 +161,9 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
 	recHit_phi.clear();
 	recHit_energyMIP.clear();
 	recHit_id.clear();
+        recHit_isPU.clear();
+        recHit_isSignal.clear();
+        simHits.clear();
 
 	edm::Handle<std::vector<SimTrack> > simTk;
 	iEvent.getByToken(srcSimTracks_, simTk);
@@ -171,22 +174,22 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
 
 	for (unsigned int j=0; j<simTk->size(); j++) 
 	{
-		//double pt = simTk->at(j).momentum().pt();
-		//if(pt < 2.0) continue;
-		//double eta = simTk->at(j).momentum().eta();
-		//if (simTk->at(j).noVertex()) continue;
-		int vertIndex = simTk->at(j).vertIndex();
-		vertex_x = simVtx->at(vertIndex).position().x();
-		vertex_y = simVtx->at(vertIndex).position().y();
-		vertex_z = simVtx->at(vertIndex).position().z();
+	  //double pt = simTk->at(j).momentum().pt();
+          //if(pt < 2.0) continue;
+	  //double eta = simTk->at(j).momentum().eta();
+	  //if (simTk->at(j).noVertex()) continue;
+          int vertIndex = simTk->at(j).vertIndex();
+	  vertex_x = simVtx->at(vertIndex).position().x();
+	  vertex_y = simVtx->at(vertIndex).position().y();
+          vertex_z = simVtx->at(vertIndex).position().z();
 	}
 
 	for(size_t i = 0; i < genParticles->size(); ++ i)
 	{
-		const reco::GenParticle & p = dynamic_cast<const reco::GenParticle &>((*genParticles)[i]);
-		genParticle_eta.push_back(p.eta());
-		genParticle_phi.push_back(p.phi());
-		genParticle_pdgId.push_back(p.pdgId());
+	  const reco::GenParticle & p = dynamic_cast<const reco::GenParticle &>((*genParticles)[i]);
+	  genParticle_eta.push_back(p.eta());
+	  genParticle_phi.push_back(p.phi());
+          genParticle_pdgId.push_back(p.pdgId());
 	}
 
 	edm::Handle<edm::SortedCollection<HGCRecHit> > srcRecHitEE;
@@ -213,20 +216,20 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
 	//std::cout << "npart = " << npart << std::endl;
 	int reachedEE=-999;
 	for(unsigned int i=0; i<npart; ++i) 
-	{
-		reachedEE=-500;
-		// event=0 is the hard scattering (all PU have event()>=1)
-		// bunchCrossing == 0 intime, buncCrossing!=0 offtime, standard generation has [-12,+3]
-		if((*part)[i].eventId().event() ==0 and (*part)[i].eventId().bunchCrossing()==0) 
-		{
-			// default values for decay position is outside detector, i.e. ~stable
-			reachedEE=1;
-			if((*part)[i].decayVertices().size()>=1) 
-			{ //they can be delta rays, in this case you have multiple decay verices
-				if ((*part)[i].decayVertices()[0]->inVolume()) reachedEE=0; //if it decays inside the tracker volume
-				break;
-			}
-		} 
+	{ 
+          reachedEE=-500;
+	  // event=0 is the hard scattering (all PU have event()>=1)
+	  // bunchCrossing == 0 intime, buncCrossing!=0 offtime, standard generation has [-12,+3]
+          if((*part)[i].eventId().event() ==0 and (*part)[i].eventId().bunchCrossing()==0) 
+	  {
+	    // default values for decay position is outside detector, i.e. ~stable
+	    reachedEE=1;
+	    if((*part)[i].decayVertices().size()>=1) 
+	    { //they can be delta rays, in this case you have multiple decay verices
+	      if ((*part)[i].decayVertices()[0]->inVolume()) reachedEE=0; //if it decays inside the tracker volume
+	      break;
+	    }
+	  } 
 	}
 	reachedEE_=reachedEE;
         double axisX = 0;
@@ -234,6 +237,9 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
         double axisZ = 0;
         double sumEnergyToNorm = 0;
         GlobalPoint showerAxis;
+        int isPUcount = 0;
+        int isSignalcount = 0;
+        int isSignalandPUcount = 0;
         for (std::vector<CaloParticle>::const_iterator it_caloPart = caloParticle->begin(); it_caloPart != caloParticle->end(); ++it_caloPart)
         {
           const SimClusterRefVector simClusterRefVector = it_caloPart->simClusters();
@@ -248,11 +254,24 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
             const std::vector<std::pair<uint32_t,float> > hits_and_fractions = (*it_sc)->hits_and_fractions();      
             for (std::vector<std::pair<uint32_t,float> >::const_iterator it_haf = hits_and_fractions.begin(); it_haf != hits_and_fractions.end(); ++it_haf) 
             {
+              
               DetId id = (it_haf->first);
-              if(bc==0 and ev==0) std::cout << "it_haf->second signal = " << it_haf->second << std::endl;
-              else if(bc!=0)  std::cout << "it_haf->second PU = " << it_haf->second << std::endl;
-              //std::cout << "id = " << id.rawId() << std::endl; 
-
+              simHitInfo simHit;
+              simHit.rawDetId = id.rawId();
+              simHit.isSignal = 0;
+              simHit.isPU = 0;
+              if(bc==0 and ev==0) 
+              {
+                simHit.isSignal = 1;
+                simHit.isPU = 0;
+              }
+              else 
+              {
+                simHit.isSignal = 0;
+                simHit.isPU = 1;
+              }
+              simHit.isPUandSignal = isSignalandPUcount;
+              simHits.push_back(simHit); 
               edm::SortedCollection<HGCRecHit>::const_iterator hgcHitEE = srcRecHitEE->find(id);
               if(hgcHitEE != srcRecHitEE->end())
               {
@@ -263,28 +282,25 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
 	          axisX += hgcHitEE->energy()*it_haf->second * recHitTools.getPosition(id).x();
                   axisY += hgcHitEE->energy()*it_haf->second * recHitTools.getPosition(id).y();
                   axisZ += hgcHitEE->energy()*it_haf->second * recHitTools.getPosition(id).z();
-                  //std::cout << "energy = " << energyFraction << " x = " << x << " y = " << y << " z = " << z << std::endl;
                 }
               }
             }
           }
         } 
         showerAxis = GlobalPoint(axisX/sumEnergyToNorm, axisY/sumEnergyToNorm, (axisZ - vertex_z)/sumEnergyToNorm);
-        /*std::cout << "showerAxis.x() = " << showerAxis.x() << std::endl;
-        std::cout << "showerAxis.y() = " << showerAxis.y() << std::endl;
-        std::cout << "showerAxis.z() = " << showerAxis.z() << std::endl;
-        std::cout << "showerAxis.eta() = " << showerAxis.eta() << std::endl;
-        std::cout << "showerAxis.phi() = " << showerAxis.phi() << std::endl;
-	*/
-        for(unsigned int l=0; l<pfCluster->size(); l++) // Iterating over sim clusters
+        /*for(unsigned int l=0; l<pfCluster->size(); l++) // Iterating over sim clusters
         {
           for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
           {
-            uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+            //uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+            //pick matched hits only
+            uint32_t id = simHits.at(l).rawDetId;
             edm::SortedCollection<HGCRecHit>::const_iterator hgcHitEE = srcRecHitEE->find(id);
             if(hgcHitEE != srcRecHitEE->end())
             {
               const HGCalDetId detId_recHit_ee = hgcHitEE->detid();
+              std::cout << "is PU ee = " << simHits.at(l).isPU <<  std::endl;
+              std::cout << "is Signal ee = " << simHits.at(l).isSignal <<  std::endl;
               //std::cout << "id recHit = " << id << std::endl; 
               //DetId detId_recHit_ee = hgcHitEE->detid(); 
               if(id==detId_recHit_ee.rawId())
@@ -299,11 +315,14 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
         {
           for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
           {
-            uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+            uint32_t id = simHits.at(l).rawDetId;
+            //uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
             edm::SortedCollection<HGCRecHit>::const_iterator hgcHitHEF = srcRecHitHEF->find(id);
             if(hgcHitHEF != srcRecHitHEF->end())
             {
               const HGCalDetId detId_recHit_hef = hgcHitHEF->detid();
+              std::cout << "is PU hef = " << simHits.at(l).isPU << std::endl;
+              std::cout << "is Signal hef = " << simHits.at(l).isSignal <<  std::endl;
               //std::cout << "id recHit = " << id << std::endl;
               //DetId detId_recHit_hef = hgcHitHEF->detid(); 
               if(id==detId_recHit_hef.rawId())
@@ -312,167 +331,169 @@ HGCTimingAnalyzerWithTOAPU::analyze(const edm::Event& iEvent, const edm::EventSe
               }
             }
           }
-        } 
+        }*/ 
         //EE
-	/*
+	
 	for(unsigned int l=0; l<pfCluster->size(); l++) // Iterating over sim clusters
 	{
-		//for (std::vector<CaloParticle>::const_iterator it_caloPart = caloParticle->begin(); it_caloPart != caloParticle->end(); ++it_caloPart)
-		//{
-                        //const SimClusterRefVector simClusterRefVector = it_caloPart->simClusters();
-                        //if(simClusterRefVector.size() > 1) continue;
-			cluster_x.push_back(pfCluster->at(l).position().X());
-			cluster_y.push_back(pfCluster->at(l).position().Y());
-			cluster_z.push_back(pfCluster->at(l).position().Z());
-			cluster_energy.push_back(pfCluster->at(l).energy());
-			cluster_time.push_back(pfCluster->at(l).time());
-			cluster_layer.push_back(pfCluster->at(l).layer());
-			cluster_eta.push_back(pfCluster->at(l).eta());   
-			for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
-			{
-				uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
-				edm::SortedCollection<HGCRecHit>::const_iterator hgcHitEE = srcRecHitEE->find(id);
-				if(hgcHitEE != srcRecHitEE->end())
-				{
-					const HGCalDetId detId_recHit_ee = hgcHitEE->detid();
-					//DetId detId_recHit_ee = hgcHitEE->detid();
-					if(id==detId_recHit_ee.rawId())// and hgcHitEE->time() > 0)
-					{
-						nhits_ee++;
-						const GlobalPoint& recHitPos_ee = geoHandle_ee->getPosition(id); 
-						recHit_phi.push_back(recHitTools.getPhi(recHitPos_ee));
-						recHit_eta.push_back(recHitTools.getEta(recHitPos_ee, vertex_z));
-						recHit_pt.push_back(recHitTools.getPt(recHitPos_ee, hgcHitEE->energy(), vertex_z));
-						recHit_x.push_back(recHitPos_ee.x());
-						recHit_y.push_back(recHitPos_ee.y());
-						recHit_z.push_back(recHitPos_ee.z());
-						recHit_energy.push_back(hgcHitEE->energy());
-                                                unsigned int layer = recHitTools.getLayerWithOffset(id);
-                                                recHit_id.push_back(id);
-						auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_ee));
-						int thick = ddd->waferTypeL(detId_recHit_ee.wafer()) - 1;
-						//unsigned int layer = detId_recHit_ee.layer();
-						recHit_layer.push_back(layer);
-						int sectionType;
-						sectionType = 2;
-						if(layer < 29) sectionType = 0;
-						else if(layer < 41) sectionType = 1;
-						double sigmaNoiseMIP = 0.0;
-						sigmaNoiseMIP = noiseMIP;
-						if(sectionType != 2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
-						double energyMIP;
-						double energy = hgcHitEE->energy()*energyDegradation[thick];
-						if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
-						else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
-						if(energyMIP > 3.) 
-						{
-							double SoverN = energyMIP / sigmaNoiseMIP;
-							double rmsTime = getTimeHit(thick, SoverN);               
-							TRandom3* rand = new TRandom3();
-							rand->SetSeed(0);
-							double deltaTime = rand->Gaus(0., rmsTime);
-							double smearedTime = hgcHitEE->time()-1. + deltaTime;
-							recHit_time.push_back(hgcHitEE->time()-1);
-							recHit_smearedTime.push_back(smearedTime);
-							recHit_soverN.push_back(SoverN);
-							recHit_rmsTime.push_back(rmsTime);
-							recHit_deltaTime.push_back(deltaTime);
-							recHit_energyMIP.push_back(energyMIP); 
-						}
-						else 
-						{
-							recHit_time.push_back(-99.0);
-							recHit_smearedTime.push_back(-99.0);
-							recHit_soverN.push_back(-99.0);
-							recHit_rmsTime.push_back(-99.0);
-							recHit_deltaTime.push_back(-99.0);
-							recHit_energyMIP.push_back(-99.0);
-						}
-					}
-				}
-			}
-
-			for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
-			{
-				uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
-				edm::SortedCollection<HGCRecHit>::const_iterator hgcHitHEF = srcRecHitHEF->find(id);
-				if(hgcHitHEF != srcRecHitHEF->end())
-				{
-					//DetId detId_recHit_hef = hgcHitHEF->detid();
-					const HGCalDetId detId_recHit_hef = hgcHitHEF->detid();
-					if(id==detId_recHit_hef.rawId())// and hgcHitHEF->time() > 0)
-					{ 
-						nhits_hf++;
-						const GlobalPoint& recHitPos_hef = geoHandle_hef->getPosition(id);
-						unsigned int layer = recHitTools.getLayerWithOffset(id);//alternate way to access the layer
-						recHit_phi.push_back(recHitTools.getPhi(recHitPos_hef));
-						recHit_eta.push_back(recHitTools.getEta(recHitPos_hef, vertex_z));
-						recHit_pt.push_back(recHitTools.getPt(recHitPos_hef, hgcHitHEF->energy(), vertex_z));
-						recHit_x.push_back(recHitPos_hef.x());
-						recHit_y.push_back(recHitPos_hef.y());
-						recHit_z.push_back(recHitPos_hef.z());
-                                                recHit_energy.push_back(hgcHitHEF->energy());
-						recHit_id.push_back(id);
-						auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_hef));
-						int thick = ddd->waferTypeL(detId_recHit_hef.wafer()) - 1;
-						int thick2 = recHitTools.getSiThickness(detId_recHit_hef) / 100. - 1.;
-						if(thick!=thick2) std::cout << "thick = " << thick << ", thick2 = " << thick2 << std::endl;
-						recHit_layer.push_back(layer);
-						int sectionType;
-						sectionType = 2;
-						if(layer < 29) sectionType = 0;
-						else if(layer < 41) sectionType = 1;
-						double sigmaNoiseMIP = 0.0;
-						sigmaNoiseMIP = noiseMIP;
-						if(sectionType !=2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
-						double energyMIP;
-						double energy = hgcHitHEF->energy()*energyDegradation[thick];
-						if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
-						else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
-						if(energyMIP > 3.)
-						{
-							double SoverN = energyMIP / sigmaNoiseMIP;
-							double rmsTime = getTimeHit(thick, SoverN);
-							TRandom3* rand = new TRandom3();
-							rand->SetSeed(0);
-							double deltaTime = rand->Gaus(0., rmsTime);
-							double smearedTime = hgcHitHEF->time()-1. + deltaTime;
-							recHit_time.push_back(hgcHitHEF->time()-1);
-							recHit_smearedTime.push_back(smearedTime);
-							recHit_soverN.push_back(SoverN);
-							recHit_rmsTime.push_back(rmsTime);
-							recHit_deltaTime.push_back(deltaTime); 
-							recHit_energyMIP.push_back(energyMIP);
-						}
-						else
-						{
-							recHit_time.push_back(-99.0);
-							recHit_smearedTime.push_back(-99.0);
-							recHit_soverN.push_back(-99.0);
-							recHit_rmsTime.push_back(-99.0);
-							recHit_deltaTime.push_back(-99.0);
-							recHit_energyMIP.push_back(-99.0);
-						}
-					}
-				}
-			}
-	        //}//eta matching
-		for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
+	  cluster_x.push_back(pfCluster->at(l).position().X());
+          cluster_y.push_back(pfCluster->at(l).position().Y());
+	  cluster_z.push_back(pfCluster->at(l).position().Z());
+	  cluster_energy.push_back(pfCluster->at(l).energy());
+	  cluster_time.push_back(pfCluster->at(l).time());
+	  cluster_layer.push_back(pfCluster->at(l).layer());
+	  cluster_eta.push_back(pfCluster->at(l).eta());   
+	  for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
+	  {
+            uint32_t id = simHits.at(l).rawDetId;
+	    //uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+	    edm::SortedCollection<HGCRecHit>::const_iterator hgcHitEE = srcRecHitEE->find(id);
+	    if(hgcHitEE != srcRecHitEE->end())
+	    {
+	      const HGCalDetId detId_recHit_ee = hgcHitEE->detid();
+	      //DetId detId_recHit_ee = hgcHitEE->detid();
+	      //std::cout << "is PU ee = " << simHits.at(l).isPU <<  std::endl;
+              //std::cout << "is Signal ee = " << simHits.at(l).isSignal <<  std::endl;
+              if(id==detId_recHit_ee.rawId())// and hgcHitEE->time() > 0)
+	      {
+		nhits_ee++;
+		const GlobalPoint& recHitPos_ee = geoHandle_ee->getPosition(id); 
+	        recHit_isSignal.push_back(simHits.at(l).isSignal);
+                recHit_isPU.push_back(simHits.at(l).isPU);
+        	recHit_phi.push_back(recHitTools.getPhi(recHitPos_ee));
+		recHit_eta.push_back(recHitTools.getEta(recHitPos_ee, vertex_z));
+		recHit_pt.push_back(recHitTools.getPt(recHitPos_ee, hgcHitEE->energy(), vertex_z));
+		recHit_x.push_back(recHitPos_ee.x());
+		recHit_y.push_back(recHitPos_ee.y());
+		recHit_z.push_back(recHitPos_ee.z());
+		recHit_energy.push_back(hgcHitEE->energy());
+                unsigned int layer = recHitTools.getLayerWithOffset(id);
+                recHit_id.push_back(id);
+		auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_ee));
+	        int thick = ddd->waferTypeL(detId_recHit_ee.wafer()) - 1;
+		recHit_layer.push_back(layer);
+		int sectionType;
+		sectionType = 2;
+		if(layer < 29) sectionType = 0;
+		else if(layer < 41) sectionType = 1;
+		double sigmaNoiseMIP = 0.0;
+	        sigmaNoiseMIP = noiseMIP;
+		if(sectionType != 2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
+		double energyMIP;
+		double energy = hgcHitEE->energy()*energyDegradation[thick];
+		if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
+	        else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
+		if(energyMIP > 3.) 
 		{
-			uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
-			edm::SortedCollection<HGCRecHit>::const_iterator hgcHitBH = srcRecHitBH->find(id);
-			if(hgcHitBH != srcRecHitBH->end())
-			{
-				const HGCalDetId detId_recHit_bh = hgcHitBH->detid();
-				if(id==detId_recHit_bh.rawId())// and hgcHitHEF->time() > 0)
-				{
-					nhits_bh++;
-					//recHit_time.push_back(hgcHitBH->time());
-					//std::cout << "hgcHitBH->time() = " << hgcHitBH->time() << std::endl;
-				}
-			}
-		}  
-	}*/
+		  double SoverN = energyMIP / sigmaNoiseMIP;
+		  double rmsTime = getTimeHit(thick, SoverN);               
+	          TRandom3* rand = new TRandom3();
+		  rand->SetSeed(0);
+		  double deltaTime = rand->Gaus(0., rmsTime);
+		  double smearedTime = hgcHitEE->time()-1. + deltaTime;
+		  recHit_time.push_back(hgcHitEE->time()-1);
+		  recHit_smearedTime.push_back(smearedTime);
+		  recHit_soverN.push_back(SoverN);
+		  recHit_rmsTime.push_back(rmsTime);
+		  recHit_deltaTime.push_back(deltaTime);
+		  recHit_energyMIP.push_back(energyMIP); 
+	        }
+		else 
+	        {
+		  recHit_time.push_back(-99.0);
+		  recHit_smearedTime.push_back(-99.0);
+		  recHit_soverN.push_back(-99.0);
+		  recHit_rmsTime.push_back(-99.0);
+		  recHit_deltaTime.push_back(-99.0);
+	          recHit_energyMIP.push_back(-99.0);
+		}
+	      }
+	    }
+          }
+
+	  for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
+	  {
+            uint32_t id = simHits.at(l).rawDetId;
+	    //uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+	    edm::SortedCollection<HGCRecHit>::const_iterator hgcHitHEF = srcRecHitHEF->find(id);
+	    if(hgcHitHEF != srcRecHitHEF->end())
+	    {
+	      //DetId detId_recHit_hef = hgcHitHEF->detid();
+	      const HGCalDetId detId_recHit_hef = hgcHitHEF->detid();
+	      if(id==detId_recHit_hef.rawId())// and hgcHitHEF->time() > 0)
+	      { 
+		nhits_hf++;
+		const GlobalPoint& recHitPos_hef = geoHandle_hef->getPosition(id);
+		unsigned int layer = recHitTools.getLayerWithOffset(id);//alternate way to access the layer
+	        recHit_isSignal.push_back(simHits.at(l).isSignal);
+                recHit_isPU.push_back(simHits.at(l).isPU);
+        	recHit_phi.push_back(recHitTools.getPhi(recHitPos_hef));
+		recHit_eta.push_back(recHitTools.getEta(recHitPos_hef, vertex_z));
+		recHit_pt.push_back(recHitTools.getPt(recHitPos_hef, hgcHitHEF->energy(), vertex_z));
+		recHit_x.push_back(recHitPos_hef.x());
+		recHit_y.push_back(recHitPos_hef.y());
+		recHit_z.push_back(recHitPos_hef.z());
+                recHit_energy.push_back(hgcHitHEF->energy());
+	        recHit_id.push_back(id);
+		auto ddd = get_ddd(caloGeom->getSubdetectorGeometry(detId_recHit_hef));
+		int thick = ddd->waferTypeL(detId_recHit_hef.wafer()) - 1;
+		int thick2 = recHitTools.getSiThickness(detId_recHit_hef) / 100. - 1.;
+		if(thick!=thick2) std::cout << "thick = " << thick << ", thick2 = " << thick2 << std::endl;
+	        recHit_layer.push_back(layer);
+		int sectionType;
+		sectionType = 2;
+		if(layer < 29) sectionType = 0;
+		else if(layer < 41) sectionType = 1;
+		double sigmaNoiseMIP = 0.0;
+		sigmaNoiseMIP = noiseMIP;
+		if(sectionType !=2) sigmaNoiseMIP = noisefC[sectionType]/fCPerMIP[thick];
+		double energyMIP;
+		double energy = hgcHitHEF->energy()*energyDegradation[thick];
+		if(sectionType == 2) energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV );
+		else energyMIP = energy/scaleCorrection[thick]/keV2GeV / (weights.at(layer)/keV2MeV);
+		if(energyMIP > 3.)
+		{
+		  double SoverN = energyMIP / sigmaNoiseMIP;
+		  double rmsTime = getTimeHit(thick, SoverN);
+		  TRandom3* rand = new TRandom3();
+		  rand->SetSeed(0);
+		  double deltaTime = rand->Gaus(0., rmsTime);
+		  double smearedTime = hgcHitHEF->time()-1. + deltaTime;
+		  recHit_time.push_back(hgcHitHEF->time()-1);
+		  recHit_smearedTime.push_back(smearedTime);
+		  recHit_soverN.push_back(SoverN);
+		  recHit_rmsTime.push_back(rmsTime);
+		  recHit_deltaTime.push_back(deltaTime); 
+	          recHit_energyMIP.push_back(energyMIP);
+		}
+	        else
+		{
+		  recHit_time.push_back(-99.0);
+	          recHit_smearedTime.push_back(-99.0);
+		  recHit_soverN.push_back(-99.0);
+		  recHit_rmsTime.push_back(-99.0);
+		  recHit_deltaTime.push_back(-99.0);
+		  recHit_energyMIP.push_back(-99.0);
+		}
+	      }
+	    }
+	  }
+          for(unsigned ifrac = 0; ifrac < pfCluster->at(l).hitsAndFractions().size(); ifrac++)
+          {
+	      uint32_t id = pfCluster->at(l).hitsAndFractions().at(ifrac).first;
+	      edm::SortedCollection<HGCRecHit>::const_iterator hgcHitBH = srcRecHitBH->find(id);
+	      if(hgcHitBH != srcRecHitBH->end())
+	      {
+	      const HGCalDetId detId_recHit_bh = hgcHitBH->detid();
+	      if(id==detId_recHit_bh.rawId())// and hgcHitHEF->time() > 0)
+	      {
+	        nhits_bh++;
+	      //recHit_time.push_back(hgcHitBH->time());
+	      //std::cout << "hgcHitBH->time() = " << hgcHitBH->time() << std::endl;
+	      }
+	    }
+	  }  
+	}
 
 	tree_->Fill();
 }
@@ -510,7 +531,9 @@ void HGCTimingAnalyzerWithTOAPU::beginJob()
 	branch_=tree_->Branch("recHit_layer", &recHit_layer);
 	branch_=tree_->Branch("recHit_energyMIP", &recHit_energyMIP);
 	branch_=tree_->Branch("recHit_id", &recHit_id);
-	branch_=tree_->Branch("cluster_layer", &cluster_layer);
+	branch_=tree_->Branch("recHit_isPU", &recHit_isPU);
+        branch_=tree_->Branch("recHit_isSignal", &recHit_isSignal);
+        branch_=tree_->Branch("cluster_layer", &cluster_layer);
 	branch_=tree_->Branch("cluster_eta", &cluster_eta);
 	branch_=tree_->Branch("genParticle_eta", &genParticle_eta);
 	branch_=tree_->Branch("genParticle_phi", &genParticle_phi);
