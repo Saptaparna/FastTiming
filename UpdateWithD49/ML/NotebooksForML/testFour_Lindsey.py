@@ -22,10 +22,10 @@ print('total samples:',totalev)
 #print('data_list.y = ', data_list.y)
 
 import torch_geometric
-ntrainbatch = 10 #10 #was set to 50
-ntestbatch = 50
-trainloader = torch_geometric.data.DataLoader(data_list[:totalev-300], batch_size=ntrainbatch)
-testloader = torch_geometric.data.DataLoader(data_list[totalev-300:totalev], batch_size=ntestbatch)
+ntrainbatch = 5 #10 #was set to 50
+ntestbatch = 10
+trainloader = torch_geometric.data.DataLoader(data_list[:totalev-2000], batch_size=ntrainbatch)
+testloader = torch_geometric.data.DataLoader(data_list[totalev-2000:totalev], batch_size=ntestbatch)
 
 import os.path as osp
 
