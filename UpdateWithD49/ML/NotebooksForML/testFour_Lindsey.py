@@ -22,10 +22,12 @@ print('total samples:',totalev)
 #print('data_list.y = ', data_list.y)
 
 import torch_geometric
-ntrainbatch = 5 #10 #was set to 50
-ntestbatch = 10
-trainloader = torch_geometric.data.DataLoader(data_list[:totalev-2000], batch_size=ntrainbatch)
-testloader = torch_geometric.data.DataLoader(data_list[totalev-2000:totalev], batch_size=ntestbatch)
+ntrainbatch = 3 #1 #5 #10 #was set to 50
+ntestbatch = 5 #1 #10
+#trainloader = torch_geometric.data.DataLoader(data_list[:5], batch_size=ntrainbatch)
+#testloader = torch_geometric.data.DataLoader(data_list[5:10], batch_size=ntestbatch)
+trainloader = torch_geometric.data.DataLoader(data_list[:2000], batch_size=ntrainbatch)
+testloader = torch_geometric.data.DataLoader(data_list[2000:totalev], batch_size=ntestbatch)
 
 import os.path as osp
 
@@ -113,14 +115,36 @@ def evaluate(epoch):
             data = data.to(device)
             result = model(data)
             lossc = resoloss(result, data.y)
-            print ('result.item() = ', result.item())
-            print ('data.y.item() = ', data.y.item())
-            frac.append((result.item() - data.y.item())/data.y.item())
+            print ('result.item() = ', result[0].item())
+            print ('data.y.item() = ', data.y[0].item())
+            print ('result.size() = ', len(result.size()))
+            resultAll = 0
+            dataAll = 0.0
+            for i in range(0, len(result.size())): 
+                frac.append((result[i].item() - data.y[i].item())/data.y[i].item()) #print(result[i].item())
+                #print ('frac = ', frac[i])
+                #resultAll += result[i].item()
+                #dataAll += data.y[i].item()
+            #resultAll = result
+            #dataAll = data
+            #print ('resultAll = ', resultAll)
+            #print ('dataAll = ', dataAll)
+            #print ('resultAll = ', resultAll/len(result.size()))
+            #print ('dataAll = ', dataAll/len(result.size()))
+                #print('result[i].item() = ', result[i].item())
+                #print('data.y[i].item() = ', data.y[i].item())
+                #frac.append((result[i].item() - data.y[i].item())/data.y[i].item())
+            #frac.append((resultAll - dataAll)/dataAll)
+            #print ('frac[0] = ', frac[0])
+            #print('index = ', i)
+            #print('result[i].item() = ', result[i].item())
+            #print('data.y[i].item() = ', data.y[i].item())
             loss.append(lossc.item())
 
 
         print('test loss:',np.mean(np.array(loss)))
-        fracarr = np.array(frac)
+        fracarr = np.array(frac)#/ntestbatch
+        print('fracarr = ', fracarr) 
 
         bin_heights, bin_borders, _ = plt.hist(fracarr, bins=100, label='histogram')
         bin_centers = bin_borders[:-1] + np.diff(bin_borders) / 2
