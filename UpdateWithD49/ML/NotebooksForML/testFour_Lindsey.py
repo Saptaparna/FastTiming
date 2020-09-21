@@ -10,7 +10,7 @@ import os
 import os.path as osp
 
 import glob
-raw_dir= '/home/sapta/hgcalNtuple_Aug31_E10/clusters/'
+raw_dir= '/home/sapta/hgcalNtuple_Aug26/clusters/'
 fnamelist = [filepath for filepath in glob.glob(raw_dir+'data_*.pt')]
 data_list = []
 for i in tqdm(fnamelist):
@@ -111,6 +111,7 @@ def evaluate(epoch):
         model.eval()
         loss = []
         frac = []
+        diff = []
         for data in tqdm(testloader):
             data = data.to(device)
             result = model(data)
@@ -122,6 +123,7 @@ def evaluate(epoch):
             dataAll = 0.0
             for i in range(0, len(result.size())): 
                 frac.append((result[i].item() - data.y[i].item())/data.y[i].item()) #print(result[i].item())
+                diff.append(result[i].item() - data.y[i].item())
                 #print ('frac = ', frac[i])
                 #resultAll += result[i].item()
                 #dataAll += data.y[i].item()
@@ -144,7 +146,9 @@ def evaluate(epoch):
 
         print('test loss:',np.mean(np.array(loss)))
         fracarr = np.array(frac)#/ntestbatch
+        diffcarr = np.array(diff)
         print('fracarr = ', fracarr) 
+        print('diffcarr = ', diffcarr)
 
         bin_heights, bin_borders, _ = plt.hist(fracarr, bins=100, label='histogram')
         bin_centers = bin_borders[:-1] + np.diff(bin_borders) / 2
@@ -172,7 +176,7 @@ def evaluate(epoch):
         print ('np.mean(np.array(loss)) = ', np.mean(np.array(loss)))
         return np.mean(np.array(loss))
 
-checkpoint_dir = '/home/sapta/hgcalNtuple_Aug31_E10/checkpoint'
+checkpoint_dir = '/home/sapta/hgcalNtuple_Aug26/checkpoint'
 os.makedirs(checkpoint_dir, exist_ok=True)
 best_loss = 99999999
 for epoch in range(1, 2): #10
