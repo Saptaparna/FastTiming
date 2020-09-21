@@ -19,7 +19,7 @@ from torch_geometric.utils import normalized_cut
 from torch_geometric.utils import remove_self_loops
 from torch_geometric.utils.undirected import to_undirected
 from torch_geometric.nn import (graclus, max_pool, max_pool_x, avg_pool, avg_pool_x,
-                                global_mean_pool, global_max_pool,
+                                global_mean_pool, global_max_pool, 
                                 global_add_pool)
 
 transform = T.Cartesian(cat=False)
@@ -113,7 +113,8 @@ class DynamicReductionNetwork(nn.Module):
         
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
-        x, batch = avg_pool_x(cluster, data.x, data.batch)
+        data.edge_attr = None
+        data = avg_pool(cluster, data)
 
         data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv3.flow))
         data.x = self.edgeconv3(data.x, data.edge_index)
@@ -136,9 +137,8 @@ class DynamicReductionNetwork(nn.Module):
 
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
-        data.edge_attr = None
-        data = avg_pool(cluster, data)
+        x, batch = avg_pool_x(cluster, data.x, data.batch)
 
-        x = global_max_pool(x, batch)
+        x = global_mean_pool(x, batch)
         
         return self.output(x).squeeze(-1)
