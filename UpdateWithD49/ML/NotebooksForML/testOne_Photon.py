@@ -11,7 +11,8 @@ import os.path as osp
 
 #print(os.environ['GNN_TRAINING_DATA_ROOT'])
 
-fname = 'hgcalNtuple_Aug31_E10.root'
+#fname = 'hgcalNtuple_Aug31_E10.root'
+fname = 'hgcalNtuple_Aug26.root'
 #fname = '/home/sameasy2006/DATA/HGCNTUP_photon_3to1000_50k.root'
 
 print(type(fname))
@@ -39,6 +40,11 @@ sim_xcoordinate = test['simcluster_x_impactPoint'].array()
 sim_ycoordinate = test['simcluster_y_impactPoint'].array()
 sim_zcoordinate = test['simcluster_z_impactPoint'].array()
 sim_timecoordinate = test['simcluster_time_impactPoint'].array()
+
+print ('simcluster_x_impactPoint = ', test['simcluster_x_impactPoint'].array())
+print ('simcluster_y_impactPoint = ', test['simcluster_y_impactPoint'].array())
+print ('simcluster_z_impactPoint = ', test['simcluster_z_impactPoint'].array())
+print ('simcluster_time_impactPoint = ', test['simcluster_time_impactPoint'].array())
 
 rechit_layer = test['rechit_layer'].array()
 rechit_time = test['rechit_time'].array()
@@ -198,11 +204,11 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
     okneg = False
     if (sim_eta[i][sim_eta[i] > 0]).size <=2 :
         if (sim_pid[i][sim_eta[i] > 0]).size ==2 :
-            #if np.unique(abs(sim_pid[i][sim_eta[i] > 0])).size == 1:
+            if np.unique(abs(sim_pid[i][sim_eta[i] > 0])).size == 1:
                 okpos = True
-        #if (sim_pid[i][sim_eta[i] > 0]).size ==1 :
-            #if (sim_pid[i][sim_eta[i] > 0])[0] == 22:
-                #okpos = True
+        if (sim_pid[i][sim_eta[i] > 0]).size ==1 :
+            if (sim_pid[i][sim_eta[i] > 0])[0] == 22:
+                okpos = True
 
     if (sim_eta[i][sim_eta[i] < 0]).size <=2 :
         if (sim_pid[i][sim_eta[i] < 0]).size ==2 :
@@ -281,18 +287,18 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
 
 
     if okpos:
-        pos_siminfo = np.stack((np.sum(sim_energy[i][sim_eta[i]>0]),
-                                np.sum(sim_eta[i][sim_eta[i]>0])/2,
-                                np.sum(sim_phi[i][sim_eta[i]>0])/2))
+        pos_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]>0]),
+                                np.sum(sim_ycoordinate[i][sim_eta[i]>0]),
+                                np.sum(sim_zcoordinate[i][sim_eta[i]>0])))
         # 0 = invalid edge, 1 = hadronic edge, 2 = EM edge, 3 = MIP edge
         pos_Ri, pos_Ro, pos_y = get_neighbours(pos_coords, pos_indices, hits_to_clusters)
         pos_graph = Graph(pos_feats, pos_Ri, pos_Ro, pos_y, simmatched = pos_siminfo)
         save_graph(pos_graph, '%s/%s_hgcal_graph_pos_evt%d.npz'%(outdir,outbase,i))
 
     if okneg:
-        neg_siminfo = np.stack((np.sum(sim_energy[i][sim_eta[i]<0]),
-                                np.sum(sim_eta[i][sim_eta[i]<0])/2,
-                                np.sum(sim_phi[i][sim_eta[i]<0])/2))
+        neg_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]<0]),
+                                np.sum(sim_ycoordinate[i][sim_eta[i]<0]),
+                                np.sum(sim_zcoordinate[i][sim_eta[i]<0])))
         # 0 = invalid edge, 1 = hadronic edge, 2 = EM edge, 3 = MIP edge
         neg_Ri, neg_Ro, neg_y = get_neighbours(neg_coords, neg_indices, hits_to_clusters)
         neg_graph = Graph(neg_feats, neg_Ri, neg_Ro, neg_y, simmatched = neg_siminfo)
