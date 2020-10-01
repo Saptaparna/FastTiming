@@ -10,7 +10,7 @@ import os
 import os.path as osp
 
 import glob
-raw_dir= '/home/sapta/hgcalNtuple_Aug26/clusters/'
+raw_dir= '/home/sapta/hgcalNtuple_Aug31_E10/clusters/'
 fnamelist = [filepath for filepath in glob.glob(raw_dir+'data_*.pt')]
 data_list = []
 for i in tqdm(fnamelist):
@@ -22,8 +22,8 @@ print('total samples:',totalev)
 #print('data_list.y = ', data_list.y)
 
 import torch_geometric
-ntrainbatch = 3 #1 #5 #10 #was set to 50
-ntestbatch = 5 #1 #10
+ntrainbatch = 2 #1 #5 #10 #was set to 50
+ntestbatch = 3 #1 #10
 #trainloader = torch_geometric.data.DataLoader(data_list[:5], batch_size=ntrainbatch)
 #testloader = torch_geometric.data.DataLoader(data_list[5:10], batch_size=ntestbatch)
 trainloader = torch_geometric.data.DataLoader(data_list[:2000], batch_size=ntrainbatch)
@@ -81,15 +81,16 @@ def train(epoch):
     print (tqdm(trainloader))
     for data in tqdm(trainloader):
             print('data.y = ', data.y)
-            data = data.to(device)
-            print (data)
-            optimizer.zero_grad()
-            result = model(data)
-            print ('result = ', result)
-            lossc = resoloss(result, data.y)
-            loss.append(lossc.item())
-            lossc.backward()
-            optimizer.step()
+            if(data.y > 0):
+                data = data.to(device)
+                print (data)
+                optimizer.zero_grad()
+                result = model(data)
+                print ('result = ', result)
+                lossc = resoloss(result, data.y)
+                loss.append(lossc.item())
+                lossc.backward()
+                optimizer.step()
     
     print('train loss:',np.mean(np.array(loss)))
 
@@ -176,7 +177,7 @@ def evaluate(epoch):
         print ('np.mean(np.array(loss)) = ', np.mean(np.array(loss)))
         return np.mean(np.array(loss))
 
-checkpoint_dir = '/home/sapta/hgcalNtuple_Aug26/checkpoint'
+checkpoint_dir = '/home/sapta/hgcalNtuple_Aug31_E10/checkpoint'
 os.makedirs(checkpoint_dir, exist_ok=True)
 best_loss = 99999999
 for epoch in range(1, 2): #10
