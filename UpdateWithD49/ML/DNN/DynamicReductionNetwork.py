@@ -54,33 +54,39 @@ class DynamicReductionNetwork(nn.Module):
             nn.ELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
+            nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
         )        
         convnn1 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),                                             
-                                nn.ELU()
+                                nn.ELU(),
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
                                 )
         convnn2 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),                                             
-                                nn.ELU()
+                                nn.ELU(),
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
                                 )                
         convnn3 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
-                                nn.ELU()
+                                nn.ELU(),
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
                                 )    
        
         convnn4 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
-                                nn.ELU()
+                                nn.ELU(),
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
                                 )
 
         convnn5 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
-                                nn.ELU()
+                                nn.ELU(),
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
                                 )
 
         self.edgeconv1 = EdgeConv(nn=convnn1, aggr=aggr)
@@ -100,7 +106,7 @@ class DynamicReductionNetwork(nn.Module):
         data.x = self.datanorm * data.x
         data.x = self.inputnet(data.x)
         
-        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv1.flow))
+        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv1.flow))
         data.x = self.edgeconv1(data.x, data.edge_index)
         
         weight = normalized_cut_2d(data.edge_index, data.x)
@@ -108,7 +114,7 @@ class DynamicReductionNetwork(nn.Module):
         data.edge_attr = None
         data = avg_pool(cluster, data)
         
-        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv2.flow))
+        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv2.flow))
         data.x = self.edgeconv2(data.x, data.edge_index)
         
         weight = normalized_cut_2d(data.edge_index, data.x)
@@ -116,7 +122,7 @@ class DynamicReductionNetwork(nn.Module):
         data.edge_attr = None
         data = avg_pool(cluster, data)
 
-        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv3.flow))
+        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv3.flow))
         data.x = self.edgeconv3(data.x, data.edge_index)
 
         weight = normalized_cut_2d(data.edge_index, data.x)
@@ -124,7 +130,7 @@ class DynamicReductionNetwork(nn.Module):
         data.edge_attr = None
         data = avg_pool(cluster, data)
 
-        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv4.flow))
+        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv4.flow))
         data.x = self.edgeconv4(data.x, data.edge_index)
 
         weight = normalized_cut_2d(data.edge_index, data.x)
@@ -132,7 +138,7 @@ class DynamicReductionNetwork(nn.Module):
         data.edge_attr = None
         data = avg_pool(cluster, data)
 
-        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=False, flow=self.edgeconv5.flow))
+        data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv5.flow))
         data.x = self.edgeconv5(data.x, data.edge_index)
 
         weight = normalized_cut_2d(data.edge_index, data.x)
