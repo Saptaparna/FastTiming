@@ -54,39 +54,39 @@ class DynamicReductionNetwork(nn.Module):
             nn.ELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ELU(),
-            nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+            nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
         )        
         convnn1 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),                                             
                                 nn.ELU(),
-                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
                                 )
         convnn2 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),                                             
                                 nn.ELU(),
-                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
                                 )                
         convnn3 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
                                 nn.ELU(),
-                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
                                 )    
        
         convnn4 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
                                 nn.ELU(),
-                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
                                 )
 
         convnn5 = nn.Sequential(nn.Linear(start_width, middle_width),
                                 nn.ELU(),
                                 nn.Linear(middle_width, hidden_dim),
                                 nn.ELU(),
-                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=False)
+                                nn.BatchNorm1d(num_features=hidden_dim, track_running_stats=True)
                                 )
 
         self.edgeconv1 = EdgeConv(nn=convnn1, aggr=aggr)
