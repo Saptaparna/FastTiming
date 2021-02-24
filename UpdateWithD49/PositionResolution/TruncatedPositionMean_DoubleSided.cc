@@ -203,6 +203,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   vector<int>     *gen_pdgid;
   vector<int>     *gen_status;
   vector<vector<int> > *gen_daughters;
+  vector<vector<unsigned int> > *multiclus_cluster2d;
 
   rechit_eta = 0;
   rechit_phi = 0;
@@ -269,6 +270,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   gen_pdgid = 0;
   gen_status = 0;
   gen_daughters = 0;
+  multiclus_cluster2d = 0;
 
   tree->SetBranchAddress("run", &(run));
   tree->SetBranchAddress("lumi", &(lumi));
@@ -329,6 +331,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   tree->SetBranchAddress("multiclus_z", &(multiclus_z));
   tree->SetBranchAddress("multiclus_slopeX", &(multiclus_slopeX));
   tree->SetBranchAddress("multiclus_slopeY", &(multiclus_slopeY));
+  tree->SetBranchAddress("multiclus_cluster2d", &(multiclus_cluster2d));
   tree->SetBranchAddress("gen_eta", &(gen_eta));
   tree->SetBranchAddress("gen_phi", &(gen_phi));
   tree->SetBranchAddress("gen_pt", &(gen_pt));
@@ -351,13 +354,20 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   TH1D *h_meanYposition_multiclus = new TH1D("h_meanYposition_multiclus", "h_meanYposition_multiclus; mean Y position; Events", 6000, -300, 300.0); h_meanYposition_multiclus->Sumw2();
   TH1D *h_meanZposition_multiclus = new TH1D("h_meanZposition_multiclus", "h_meanZposition_multiclus; mean Z position; Events", 10000, -500, 500.0); h_meanZposition_multiclus->Sumw2();
 
-  TH1D *h_PositionAverage_X = new TH1D("h_PositionAverage_X", "h_PositionAverage_X;  mean X position; Events", 120, -30, 30.0); h_PositionAverage_X->Sumw2();
-  TH1D *h_PositionAverage_Y = new TH1D("h_PositionAverage_Y", "h_PositionAverage_Y;  mean Y position; Events", 120, -30, 30.0); h_PositionAverage_Y->Sumw2();
+  TH1D *h_PositionAverage_X = new TH1D("h_PositionAverage_X", "h_PositionAverage_X;  mean X position; Events", 1200, -30, 30.0); h_PositionAverage_X->Sumw2();
+  TH1D *h_PositionAverage_Y = new TH1D("h_PositionAverage_Y", "h_PositionAverage_Y;  mean Y position; Events", 1200, -30, 30.0); h_PositionAverage_Y->Sumw2();
 
   TH1D *h_nMult = new TH1D("h_nMult", "h_nMult; number of multiclusters; Events", 20, -0.5, 19.5); h_nMult->Sumw2();
   TH1D *h_nMult_AfterCuts = new TH1D("h_nMult_AfterCuts", "h_nMult_AfterCuts; number of multiclusters; Events", 10, -0.5, 9.5); h_nMult_AfterCuts->Sumw2();
-  TH1D *h_res_Xposition = new TH1D("h_res_Xposition", "h_res_Xposition; X postion [pred - truth [cm]]; Events", 100000, -10, 10); h_res_Xposition->Sumw2();
-  TH1D *h_res_Yposition = new TH1D("h_res_Yposition", "h_res_Yposition; Y postion [pred - truth [cm]]; Events", 100000, -10, 10); h_res_Yposition->Sumw2();
+  TH1D *h_res_Xposition = new TH1D("h_res_Xposition", "h_res_Xposition; X position [pred - truth [cm]]; Events", 100000, -10, 10); h_res_Xposition->Sumw2();
+  TH1D *h_res_Yposition = new TH1D("h_res_Yposition", "h_res_Yposition; Y position [pred - truth [cm]]; Events", 100000, -10, 10); h_res_Yposition->Sumw2();
+  //TH2D *h_reco_gen_X = new TH2D("h_reco_gen_X", "h_reco_gen_X; reco X cm; gen X cm", 6000, -300, 300.0, 6000, -300, 300.0); h_reco_gen_X->Sumw2();
+  //TH2D *h_reco_gen_Y = new TH2D("h_reco_gen_Y", "h_reco_gen_Y; reco Y cm; gen Y cm", 1000, -0.5, 0.5, 1000, -0.5, 0.5); h_reco_gen_Y->Sumw2();
+  TH2D *h_reco_gen_X = new TH2D("h_reco_gen_X", "h_reco_gen_X; gen X cm; reco X cm", 6000, -300, 300.0, 6000, -300, 300.0); h_reco_gen_X->Sumw2();
+  TH2D *h_reco_gen_Y = new TH2D("h_reco_gen_Y", "h_reco_gen_Y; gen Y cm; reco Y cm", 6000, -300, 300.0, 6000, -300, 300.0); h_reco_gen_Y->Sumw2();
+
+  TH2D *h_reco_gen_X_perhit = new TH2D("h_reco_gen_X_perhit", "h_reco_gen_X_perhit; gen X cm; reco X cm", 6000, -300, 300.0, 6000, -300, 300.0); h_reco_gen_X_perhit->Sumw2();
+  TH2D *h_reco_gen_Y_perhit = new TH2D("h_reco_gen_Y_perhit", "h_reco_gen_Y_perhit; gen Y cm; reco Y cm", 6000, -300, 300.0, 6000, -300, 300.0); h_reco_gen_Y_perhit->Sumw2();
 
   TH1D *h_nHits_afterCut = new TH1D("h_nHits_afterCut", "h_nHits_afterCut; Number of hits; Events", 500, 0.0, 500.0); h_nHits_afterCut->Sumw2(); 
 
@@ -365,6 +375,10 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   TH1D *h_rechitY = new TH1D("h_rechitY", "h_rechitY; rechit Y [cm]; Entries", 100, 50.0, -50.0);h_rechitY->Sumw2();
   TH1D *h_rechitZ = new TH1D("h_rechitZ", "h_rechitZ; rechit Z [cm]; Entries", 100, 300.0, 400.0);h_rechitZ->Sumw2();
   TH1D *h_rechitX_BeforeTruncation = new TH1D("h_rechitX_BeforeTruncation", "h_rechitX_BeforeTruncation; rechit X [cm]; Entries", 150, 0.0, 150.0);h_rechitX_BeforeTruncation->Sumw2();
+  TH2D *h_rechit_rho_energy = new TH2D("h_rechit_rho_energy", "h_rechit_rho_energy; rechit #rho; rechit energy", 1000, 0.0, 100.0, 100, 0.0, 1.0);h_rechit_rho_energy->Sumw2();
+  TH2D *h_multiclus_clus2D_energy = new TH2D("h_multiclus_clus2D_energy", "h_multiclus_clus2D_energy; Number of 2D clusters; Multicluster energy", 15, -0.5, 14.5, 100, 0.0, 50.0); h_multiclus_clus2D_energy->Sumw2(); 
+
+  TH1D *h_nHits_beforeCut = new TH1D("h_nHits_beforeCut", "h_nHits_beforeCut; Number of hits; Events", 100000, -0.5, 99999.5); h_nHits_beforeCut->Sumw2();
 
   TFile *outputFile;
   TTree *outputTree;
@@ -410,6 +424,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
 
   std::vector<float> averagePosition;
   int nEvents=tree->GetEntries();
+  //int nEvents=1;
   std::cout << "nEvents= " << nEvents << std::endl;
   int nEvents_passed=0;
   int rho_passed=0;
@@ -443,6 +458,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     v_recHitLayer.clear();
     v_recHitEta.clear();
     std::vector<RecHitInfo> rechits;
+    h_nHits_beforeCut->Fill(rechit_energy->size());
     for (unsigned int k=0; k<rechit_energy->size(); k++)
     {
       RecHitInfo rechit;
@@ -457,14 +473,37 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       rechit.rechitLayer = rechit_layer->at(k);
       float toRH[3] = {0., 0., rechit.rechitZ};
       layerIntersection(toRH, fromAxis, vtx);
-      //if(rechit.rechitE > 0.05) std::cout << rechit.rechitX << "," << rechit.rechitY << "," << rechit.rechitZ << std::endl;
+      /*int grade=0.0;
+      if(rechit.rechitTime>-10.0) grade = 1.0;
+      if(rechit.rechitTime>-6.0) grade = 2.0;
+      if(rechit.rechitTime>0.0) grade = 3.0;
+      if(rechit.rechitTime>0.001) grade = 4.0;
+      if(rechit.rechitTime>0.002) grade = 5.0;
+      if(rechit.rechitTime>0.003) grade = 6.0;
+      if(rechit.rechitTime>0.004) grade = 7.0;
+      if(rechit.rechitTime>0.005) grade = 8.0;
+      if(rechit.rechitTime>0.006) grade = 9.0;
+      if(rechit.rechitTime>0.007) grade = 10.0;
+      if(rechit.rechitTime>0.008) grade = 11.0;
+      if(rechit.rechitTime>0.009) grade = 12.0;
+      if(rechit.rechitTime>0.010) grade = 13.0;
+      if(rechit.rechitTime>0.05) grade = 14.0;
+      if(rechit.rechitTime>0.10) grade = 15.0;
+      if(rechit.rechitTime>0.50) grade = 16.0;
+      if(rechit.rechitTime>1.0) grade = 17.0;
+      if(rechit.rechitTime>5.0) grade = 18.0;
+      if(rechit.rechitTime>10.0) grade = 19.0;
+      if(rechit.rechitTime>20.0) grade = 20.0;
+      if(rechit.rechitE > 0.02) std::cout << rechit.rechitX << "," << rechit.rechitY << "," << rechit.rechitZ << "," << rechit.rechitTime  << "," << rechit.rechitE << "," << grade << std::endl;*/
       //if(rechit.rechitE > 0.05) std::cout << toRH[0]  << "," << toRH[1]  << "," << toRH[2] << std::endl;
       if(rechit.rechitE > 0.05) 
       {
         float Radius_RhGen = sqrt(pow(toRH[0]-rechit.rechitX, 2) + pow(toRH[1]-rechit.rechitY, 2));
         h_rho->Fill(Radius_RhGen);
-        if(Radius_RhGen < rhoCut) rechits.push_back(rechit);
-        if(Radius_RhGen < rhoCut) h_rechitX_BeforeTruncation->Fill(rechit.rechitX);
+        h_rechit_rho_energy->Fill(Radius_RhGen, rechit.rechitE); 
+        //if(rechit.rechitTime > 0) std::cout << "rechit.rechitTime = " << rechit.rechitTime << std::endl;
+        if(Radius_RhGen < rhoCut and rechit.rechitTime > 0.) rechits.push_back(rechit);
+        if(Radius_RhGen < rhoCut and rechit.rechitTime > 0.) h_rechitX_BeforeTruncation->Fill(rechit.rechitX);
         //if(Radius_RhGen < 2.0) rechits.push_back(rechit);
         //if(Radius_RhGen < 2.0) h_rechitX_BeforeTruncation->Fill(rechit.rechitX);
       }
@@ -473,7 +512,7 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     //implement a smart sorting algorithm
     std::sort(rechits.begin(), rechits.end(), sortRecHitsInAscendingPositionDifference); 
 
-    //if(rechits.size()<1) continue;
+    if(rechits.size()<1) continue;
     nEvents_passed_1hit++;
 
     int rechitsFullSize = rechits.size();
@@ -520,6 +559,10 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       float toRH[3] = {0., 0., rechits.at(j).rechitZ};
       layerIntersection(toRH, fromAxis, vtx);
       toRH_average_x += toRH[0];
+      h_reco_gen_X_perhit->Fill(toRH[0], rechits.at(j).rechitX);
+      h_reco_gen_Y_perhit->Fill(toRH[1], rechits.at(j).rechitY);
+      //std::cout << "toRH_average_x = " << toRH[0] << std::endl;
+      //std::cout << "toRH_average_y = " << toRH[1] << std::endl;
       toRH_average_y += toRH[1];
       if(rechits.size() >= 3)
       {
@@ -534,6 +577,10 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     }
     if(nhits>0) h_PositionAverage_X->Fill(sumPositionAverageX/sumEnergy - toRH_average_x/nhits);
     if(nhits>0) h_PositionAverage_Y->Fill(sumPositionAverageY/sumEnergy - toRH_average_y/nhits);
+    if(nhits>0) h_reco_gen_X->Fill(toRH_average_x/nhits, sumPositionAverageX/sumEnergy);
+    if(nhits>0) h_reco_gen_Y->Fill(toRH_average_y/nhits, sumPositionAverageY/sumEnergy); 
+    //h_reco_gen_X->Fill(toRH_average_x, sumPositionAverageX/sumEnergy);
+    //h_reco_gen_Y->Fill(toRH_average_y, sumPositionAverageY/sumEnergy); 
     if(nhits>0) h_nHits_afterCut->Fill(rechits.size());
     if(nhits>0) averagePosition.push_back(sumPositionAverageX/sumEnergy);
     if(nhits>0) rho_passed++;  
@@ -579,25 +626,28 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     h_nMult->Fill(multiclus_pt->size());
     double genXdir = 0.0;
     double genYdir = 0.0;
+    //std::cout << "multiclus_cluster2d->size() = " << multiclus_cluster2d->size() << std::endl;
     for(unsigned int i=0; i<multiclus_pt->size(); i++)
     {
+      
       if(multiclus_energy->at(i) > 40.0)
       { 
         nMult += 1;
         if(nMult!=1) continue;
+       
         sumXPosition_multiClus += multiclus_slopeX->at(i)*multiclus_energy->at(i);
         sumYPosition_multiClus += multiclus_slopeY->at(i)*multiclus_energy->at(i);
         sumZPosition_multiClus += multiclus_z->at(i)*multiclus_energy->at(i);
         sumEnergy_multiClus += multiclus_energy->at(i);
-        //float toMC[3] = {0., 0., zGen};
-        float toMC[3] = {0., 0., multiclus_z->at(i)};
+        float toMC[3] = {0., 0., zGen};
+        //float toMC[3] = {0., 0., multiclus_z->at(i)};
         //std::cout << "fromAxis[0] = " << fromAxis[0] << std::endl;
         //std::cout << "fromAxis[2] = " << fromAxis[2] << std::endl;
         //std::cout << "toMC[2] = " << toMC[2] << std::endl;
 
         layerIntersection(toMC, fromAxis, vtx);
         
-        //std::cout << "toMC[0] = " << toMC[0] << std::endl;
+        //std::cout << toMC[0] << "," << toMC[1] << std::endl;
         //std::cout << "toMC[1] = " << toMC[1] << std::endl;
         genXdir = toMC[0];
         genYdir = toMC[1];
@@ -624,6 +674,8 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     std::vector<multiClusInfo> v_multiClus;
     float genXdir_mc = 0.0;
     float genYdir_mc = 0.0;
+    std::vector<int> flatten_multiclus_cluster2d;
+    flatten_multiclus_cluster2d.clear();
     for (unsigned int k=0; k<multiclus_pt->size(); k++)
     {
       multiClusInfo multiClus;
@@ -632,6 +684,8 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       multiClus.multiClusZ = multiclus_z->at(k);
       multiClus.multiClusE = multiclus_energy->at(k);
       v_multiClus.push_back(multiClus);
+      //if(multiClus.multiClusE > 40) std::cout << "multiclus_cluster2d->at(k) = " << multiclus_cluster2d->at(k)[0] << std::endl;
+      //flatten_multiclus_cluster2d.push_back(multiclus_cluster2d->at(k));
     }
 
     std::sort(v_multiClus.begin(), v_multiClus.end(), sortMultiClusInDescendingE);
@@ -641,9 +695,12 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       toMC_MC[0] = 0.0;
       toMC_MC[1] = 0.0;
       toMC_MC[2] = v_multiClus.at(0).multiClusZ;
+      //std::cout << "v_multiClus.at(0).multiClusZ = " << v_multiClus.at(0).multiClusZ << std::endl;
       layerIntersection(toMC_MC, fromAxis, vtx);
-      genXdir_mc = xGen;//toMC_MC[0];
+      genXdir_mc = toMC_MC[0];//xGen;//toMC_MC[0];
       genYdir_mc = toMC_MC[1];
+      //std::cout << "v_multiClus.at(0).multiClusX = " << v_multiClus.at(0).multiClusX << std::endl;
+      //std::cout << "toMC_MC[0] = " << toMC_MC[0] << std::endl;
       //std::cout << "v_multiClus.at(0).multiClusE = " << v_multiClus.at(0).multiClusE << std::endl;
       //std::cout << "genXdir_mc = " << genXdir_mc << std::endl;
       //std::cout << "genYdir_mc = " << genYdir_mc << std::endl;
@@ -652,6 +709,8 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       h_meanXposition_multiclus->Fill(v_multiClus.at(0).multiClusX);
       h_meanYposition_multiclus->Fill(v_multiClus.at(0).multiClusY);
       h_meanZposition_multiclus->Fill(v_multiClus.at(0).multiClusZ); 
+      //h_multiclus_clus2D_energy->Fill(multiclus_cluster2d->size(), v_multiClus.at(0).multiClusE);
+      h_multiclus_clus2D_energy->Fill(flatten_multiclus_cluster2d.size(), v_multiClus.at(0).multiClusE);
     }
     outputTree->Fill();
   }//end of event loop
@@ -664,11 +723,11 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   //std::sort(averagePosition.begin(), averagePosition.end(), sortByPositionOrder);
 
   int removeElementsLow = 0.1586*averagePosition.size();
-
+  /*
   std::cout << "averagePosition.at(removeElementsLow) = " << averagePosition.at(removeElementsLow) << std::endl;
   std::cout << "averagePosition.at(removeElementsHigh) = " << averagePosition.at(removeElementsLow+0.68*averagePosition.size()) << std::endl;
   std::cout << "68% CI = " << (averagePosition.at(removeElementsLow+0.68*averagePosition.size()) - averagePosition.at(removeElementsLow))/2.0 << std::endl;
-
+  */
   int fracPercentLow = fractionLow*100;
   std::string strFracPercentLow = std::to_string(fracPercentLow);
 
@@ -677,6 +736,8 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
 
   std::string histfilename=(outfile+"_FractionLow_"+strFracPercentLow+"_FractionHigh_"+strFracPercentHigh+"_DoubleSided.root").c_str();
   TFile *tFile=new TFile(histfilename.c_str(), "RECREATE");
+  h_nHits_afterCut->Write();
+  h_nHits_beforeCut->Write();
   h_rho->Write();
   h_meanXposition->Write();
   h_meanYposition->Write();
@@ -694,6 +755,12 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   h_rechitY->Write();
   h_rechitZ->Write();
   h_rechitX_BeforeTruncation->Write();
+  h_rechit_rho_energy->Write();
+  h_multiclus_clus2D_energy->Write();
+  h_reco_gen_X->Write();
+  h_reco_gen_Y->Write();
+  h_reco_gen_X_perhit->Write();
+  h_reco_gen_Y_perhit->Write();
   tFile->Close();
   outputFile->Close();
   std::cout<<"Wrote output file "<<histfilename<<std::endl;
