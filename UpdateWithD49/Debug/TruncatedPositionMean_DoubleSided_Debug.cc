@@ -448,7 +448,8 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
   for (int ievent=0; ievent<nEvents; ++ievent)
   {
     tree->GetEvent(ievent);
-    float vtx[3] = {0.0, 0.0, 0.0}; //consider replacing with original vertex
+    float vtx[3] = {vtx_x, vtx_y, vtx_z};
+    //float vtx[3] = {0.0, 0.0, 0.0}; //consider replacing with original vertex
     float etaGen = gen_eta->at(0);
     float phiGen = gen_phi->at(0);
     float xGen = gen_pt->at(0)*TMath::Cos(phiGen);//vtx_x;
@@ -456,7 +457,9 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
     float zGen = gen_pt->at(0)*TMath::SinH(etaGen);
     //float zGen = xGen*TMath::SinH(etaGen);
     //double tanthetav = TMath::Sqrt(pow(vtx_x, 2) + pow(vtx_y, 2))/vtx_z;
-    /*std::cout << "phiGen = " << phiGen << std::endl;
+    /*std::cout << "vtx_x = " << vtx_x << std::endl;
+    std::cout << "vtx_y = " << vtx_y << std::endl;
+    std::cout << "phiGen = " << phiGen << std::endl;
     std::cout << "etaGen = " << etaGen << std::endl;
     std::cout << "xGen = " << xGen << std::endl;
     std::cout << "yGen = " << yGen << std::endl;
@@ -554,10 +557,10 @@ int TruncatedPositionMean_DoubleSided(std::string infile, std::string outfile, f
       if(rechits.size() >= 3) sumEnergy += rechits.at(j).rechitE;
       float toRH[3] = {0., 0., rechits.at(j).rechitZ};
       layerIntersection(toRH, fromAxis, vtx);
-      toRH_average_x += toRH[0];
+      if(rechits.size() >= 3) toRH_average_x += toRH[0];
       h_reco_gen_X_perhit->Fill(toRH[0], rechits.at(j).rechitX);
       h_reco_gen_Y_perhit->Fill(toRH[1], rechits.at(j).rechitY);
-      toRH_average_y += toRH[1];
+      if(rechits.size() >= 3) toRH_average_y += toRH[1];
       if(rechits.size() >= 3)
       {
         v_recHitTime.push_back(rechits.at(j).rechitTime);
