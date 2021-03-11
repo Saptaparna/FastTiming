@@ -112,7 +112,7 @@ class DynamicReductionNetwork(nn.Module):
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
         data.edge_attr = None
-        data = avg_pool(cluster, data)
+        data = max_pool(cluster, data)
         
         data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv2.flow))
         data.x = self.edgeconv2(data.x, data.edge_index)
@@ -120,7 +120,7 @@ class DynamicReductionNetwork(nn.Module):
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
         data.edge_attr = None
-        data = avg_pool(cluster, data)
+        data = max_pool(cluster, data)
 
         data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv3.flow))
         data.x = self.edgeconv3(data.x, data.edge_index)
@@ -128,7 +128,7 @@ class DynamicReductionNetwork(nn.Module):
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
         data.edge_attr = None
-        data = avg_pool(cluster, data)
+        data = max_pool(cluster, data)
 
         data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv4.flow))
         data.x = self.edgeconv4(data.x, data.edge_index)
@@ -136,14 +136,14 @@ class DynamicReductionNetwork(nn.Module):
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
         data.edge_attr = None
-        data = avg_pool(cluster, data)
+        data = max_pool(cluster, data)
 
         data.edge_index = to_undirected(knn_graph(data.x, self.k, data.batch, loop=True, flow=self.edgeconv5.flow))
         data.x = self.edgeconv5(data.x, data.edge_index)
 
         weight = normalized_cut_2d(data.edge_index, data.x)
         cluster = graclus(data.edge_index, weight, data.x.size(0))
-        x, batch = avg_pool_x(cluster, data.x, data.batch)
+        x, batch = max_pool_x(cluster, data.x, data.batch)
 
         x = global_mean_pool(x, batch)
         
