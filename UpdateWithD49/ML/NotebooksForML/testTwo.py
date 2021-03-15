@@ -25,7 +25,7 @@ sig_weight = 1.0
 bkg_weight = 1.0
 train_batch_size = 1
 valid_batch_size = 1
-n_epochs = 20
+n_epochs = 200
 lr = 0.01
 hidden_dim = 64
 n_iters = 6
@@ -35,7 +35,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('using device %s'%device)
 import logging
 
-path ='/home/sapta/hgcalNtuple_Aug31_E10/'
+path ='/home/sapta/hgcalNtuple_Aug26/'
 print(path)
 full_dataset = HitGraphDataset(path, directed=directed, categorical=True)
 fulllen = len(full_dataset)
@@ -62,7 +62,7 @@ print ('num_classes',num_classes)
 the_weights = np.array([1., 1., 1., 1.]) #[0.017, 1., 1., 10.]
 
 trainer = GNNTrainer(category_weights = the_weights,
-                     output_dir='/home/sapta/hgcalNtuple_Aug31_E10_8nn_siminfo', device=device)
+                     output_dir='/home/sapta/hgcalNtuple_Aug26_8nn_siminfo', device=device)
 
 
 trainer.logger.setLevel(logging.DEBUG)
@@ -78,11 +78,13 @@ def lr_scaling(optimizer):
                              min_lr=5e-7, factor=0.2,
                              threshold=0.01, patience=5)
 
-
 trainer.build_model(name='EdgeNetWithCategories', loss_func='nll_loss',
                     optimizer='AdamW', learning_rate=0.001, lr_scaling=lr_scaling,
                     input_dim=num_features, hidden_dim=64, n_iters=6,
                     output_dim=num_classes)
+
+#print ('output_dim = ', output_dim)
+print ('num_classes = ', num_classes)
 
 trainer.print_model_summary()
 

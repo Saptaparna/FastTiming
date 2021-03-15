@@ -11,7 +11,7 @@ import os.path as osp
 
 #print(os.environ['GNN_TRAINING_DATA_ROOT'])
 
-#fname = 'hgcalNtuple_Sep29_RecHitEnCut.root'
+#fname = 'hgcalNtuple_Feb25_All.root'
 fname = 'hgcalNtuple_Aug26.root'
 #fname = '/home/sameasy2006/DATA/HGCNTUP_photon_3to1000_50k.root'
 
@@ -56,6 +56,7 @@ print ('size of rechit_energy = ', len(rechit_energy))
 rechit_x = test['rechit_x'].array()
 rechit_y = test['rechit_y'].array()
 rechit_z = test['rechit_z'].array()
+rechit_eta = test['rechit_eta'].array()
 #print('rechit_energy = ', rechit_energy)
 for i in range(0, 5):
     print ('rechit size per event = ', rechit_energy[i].shape)
@@ -115,11 +116,13 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
          #pos_siminfo = np.stack((np.sum(sim_energy[i][sim_eta[i]>0]),np.sum(sim_eta[i][sim_eta[i]>0])/2,np.sum(sim_phi[i][sim_eta[i]>0])/2))
         #print ('sim_xcoordinate[i] = ', sim_xcoordinate[i]) 
         #print ('np.stack((np.sum(sim_xcoordinate[i])) = ', np.stack((np.sum(sim_xcoordinate[i]),np.sum(sim_ycoordinate[i][sim_eta[i]>0]))))  
-        pos_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]>0])/2,np.sum(sim_ycoordinate[i][sim_eta[i]>0])/2,np.sum(sim_zcoordinate[i][sim_eta[i]>0]/2)))
-        neg_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]<0])/2,np.sum(sim_ycoordinate[i][sim_eta[i]<0])/2,np.sum(sim_zcoordinate[i][sim_eta[i]<0]/2)))
+        #pos_rechitinfo = np.stack(np.sum(rechit_x[i][rechit_eta[i]>0])/len(rechit_x[i]), np.sum(rechit_y[i][rechit_eta[i)
+        #neg_rechitinfo = np.stack(rechit_x[i][rechit_eta[i]<0], rechit_y[i][rechit_eta[i]<0], rechit_z[i][rechit_eta[i]<0])
+        pos_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]>0])/2,np.sum(sim_ycoordinate[i][sim_eta[i]>0])/2,np.sum(sim_zcoordinate[i][sim_eta[i]>0])/2))
+        neg_siminfo = np.stack((np.sum(sim_xcoordinate[i][sim_eta[i]<0])/2,np.sum(sim_ycoordinate[i][sim_eta[i]<0])/2,np.sum(sim_zcoordinate[i][sim_eta[i]<0])/2))
         #neg_siminfo = np.sum(siminfo[:,np.argwhere(sim_eta[i]<0)].squeeze(),axis=1)
 
-        print ('pos_siminfo line 106 = ', pos_siminfo)
+        #print ('pos_siminfo line 106 = ', pos_siminfo)
         #print (pos_siminfo)
         break
 #for i in tqdm(range(1000),desc='events processed'): #
@@ -156,7 +159,9 @@ def get_features(ievt, mask):
 
 def get_neighbours(coords, map_idx, cluster_truth):
     nbrs = NearestNeighbors(algorithm='kd_tree').fit(coords)
-    nbrs_sm = nbrs.kneighbors_graph(coords, 8)
+    #nbrs_sm = nbrs.kneighbors_graph(coords, 8)
+    nbrs_sm = nbrs.kneighbors_graph(coords, 6)
+    #nbrs_sm = nbrs.kneighbors_graph(coords, 2)
     nbrs_sm.setdiag(0) #remove self-loop edges
     nbrs_sm.eliminate_zeros()
     nbrs_sm = nbrs_sm + nbrs_sm.T
@@ -264,17 +269,16 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
     #hit_truth = hit_truth[np.argsort(hit_truth[:,0])]
 
     #print('raw hit truth',hit_truth)
-
+    #print ('rechit_z[i].size = ', rechit_z[i].size)
     hits_to_clusters = csr_matrix((hit_truth[:,2], (hit_truth[:,0], hit_truth[:,1])),
                                   (rechit_z[i].size, np.max(hit_to_clus)+1))
 
     #print('sparse hit truth',hits_to_clusters.todense())
     v = rechit_energy[i] > 0.05
-    pos_mask = (rechit_z[i] > 0) & (rechit_energy[i] > 0.05)
-    neg_mask = ~(rechit_z[i] > 0) #and (v.all())
+    pos_mask = (rechit_z[i] > 0) & (rechit_energy[i] > 0.05) #& (rechit_time[i] > 5.) 
+    neg_mask = ~(rechit_z[i] > 0) & (rechit_energy[i] > 0.05) #& (rechit_time[i] > 5.) #and (v.all())
     #print('pos_mask line 275 = ', pos_mask)
     #neg_mask = ~pos_mask 
-
     rechit_indices = np.arange(rechit_z[i].size)
 
     pos_feats = get_features(i, pos_mask)
@@ -286,12 +290,14 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
 
     pos_indices = rechit_indices[pos_mask]
     neg_indices = rechit_indices[neg_mask]
-
+    #print ('rechit_energy[pos_indices] = ', rechit_energy[pos_indices])
     #print(pos_indices, pos_indices.shape)
     #print(neg_indices, neg_indices.shape)
 
     pos_coords = pos_feats[:,0:3]
     neg_coords = neg_feats[:,0:3]
+    #print ('pos_feats = ', pos_feats)
+    #print ('pos_coords = ', pos_coords)
 
     #siminfo =  np.stack((sim_energy[i],sim_eta[i],sim_phi[i]))
     #pos_siminfo = siminfo[:,np.argwhere(sim_eta[i]>0)].squeeze()
@@ -347,7 +353,7 @@ for i in tqdm(range(rechit_z.size),desc='events processed'): #
 #    save_graph(neg_graph, '%s/%s_hgcal_graph_neg_evt%d.npz'%(outdir,outbase,i))
 
 
-print ('total skipped events:',skipevt,'out ot total events:',rechit_z.size)
+print ('total skipped events:',skipevt,'out of total events:',rechit_z.size)
 
 import matplotlib.pyplot as plt
 

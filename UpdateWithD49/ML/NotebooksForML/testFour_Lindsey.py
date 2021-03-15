@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from scipy.sparse import csr_matrix, find
 from scipy.spatial import cKDTree
@@ -10,16 +11,20 @@ import os
 import os.path as osp
 
 import glob
-raw_dir= '/home/sapta/hgcalNtuple_Aug31_E10/clusters/'
+np.set_printoptions(threshold=sys.maxsize)
+
+raw_dir= '/home/sapta/hgcalNtuple_Aug26/clusters/'
 fnamelist = [filepath for filepath in glob.glob(raw_dir+'data_*.pt')]
 data_list = []
 for i in tqdm(fnamelist):
     data_list.append(torch.load(i))
    
 totalev = len(data_list)
-print('data_list[0].y = ', data_list[0].y)
 print('total samples:',totalev)
-#print('data_list.y = ', data_list.y)
+#print('data_list[0].x = ', data_list[0].x)
+#print('data_list[0].y = ', data_list[0].y)
+#print('data_list[0].z = ', data_list[0].z)
+
 
 import torch_geometric
 ntrainbatch = 2 #1 #5 #10 #was set to 50
@@ -74,6 +79,7 @@ def resoloss(output,truth):
 
 
 model.train()
+train_loss = []
 def train(epoch):
     model.train()
     loss = []
@@ -81,17 +87,16 @@ def train(epoch):
     print (tqdm(trainloader))
     for data in tqdm(trainloader):
             print('data.y = ', data.y)
-            if(data.y > 0):
-                data = data.to(device)
-                print (data)
-                optimizer.zero_grad()
-                result = model(data)
-                print ('result = ', result)
-                lossc = resoloss(result, data.y)
-                loss.append(lossc.item())
-                lossc.backward()
-                optimizer.step()
-    
+            data = data.to(device)
+            print (data)
+            optimizer.zero_grad()
+            result = model(data)
+            print ('result = ', result)
+            lossc = resoloss(result, data.y)
+            loss.append(lossc.item())
+            lossc.backward()
+            optimizer.step()
+    train_loss.append(np.mean(np.array(loss)))
     print('train loss:',np.mean(np.array(loss)))
 
 
@@ -105,6 +110,8 @@ import matplotlib.pyplot as plt
 def gaussian(x,  mean,a, sigma):
     return a * np.exp(-((x - mean)**2 / (2 * sigma**2)))
 
+true = []
+pred = []
 def evaluate(epoch):
         """"Evaluate the model"""
         model.zero_grad()
@@ -125,6 +132,8 @@ def evaluate(epoch):
             for i in range(0, len(result.size())): 
                 frac.append((result[i].item() - data.y[i].item())/data.y[i].item()) #print(result[i].item())
                 diff.append(result[i].item() - data.y[i].item())
+                #true.append(data.y[i].item())
+                #pred.append(result[i].item())
                 #print ('frac = ', frac[i])
                 #resultAll += result[i].item()
                 #dataAll += data.y[i].item()
@@ -138,52 +147,78 @@ def evaluate(epoch):
                 #print('data.y[i].item() = ', data.y[i].item())
                 #frac.append((result[i].item() - data.y[i].item())/data.y[i].item())
             #frac.append((resultAll - dataAll)/dataAll)
+
             #print ('frac[0] = ', frac[0])
             #print('index = ', i)
             #print('result[i].item() = ', result[i].item())
             #print('data.y[i].item() = ', data.y[i].item())
             loss.append(lossc.item())
-
-
+            true.append(data.y[i].item())
+            pred.append(result[i].item())
+        plt.plot(true[i], pred[i], 'o', markersize=5, color='blue')
+        plt.legend()
+        plt.ylabel('Prediction (RECO) x-coordinate')
+        plt.xlabel('Truth (GEN) x-coordinate')
+        plt.savefig("Figure_Scatter2D_GenVsReco"+str(epoch)+".png")
+        plt.clf()
         print('test loss:',np.mean(np.array(loss)))
         fracarr = np.array(frac)#/ntestbatch
         diffcarr = np.array(diff)
         print('fracarr = ', fracarr) 
         print('diffcarr = ', diffcarr)
 
-        bin_heights, bin_borders, _ = plt.hist(fracarr, bins=100, label='histogram')
+        #bin_heights, bin_borders, _ = plt.hist(diffcarr, bins=500, label='histogram')
+        bin_heights, bin_borders, _ = plt.hist(diffcarr, bins=100, label='histogram')
         bin_centers = bin_borders[:-1] + np.diff(bin_borders) / 2
-
         try:
-            popt, _ = curve_fit(gaussian, bin_centers, bin_heights, p0=[0., 100., 1.],bounds = ([-np.inf,0,0],[np.inf,np.inf,np.inf]))
+            popt, _ = curve_fit(gaussian, bin_centers, bin_heights, p0=[0., 100., 1.], bounds = ([-np.inf,0,0],[np.inf,np.inf,np.inf]))
             x_interval_for_fit = np.linspace(bin_borders[0], bin_borders[-1], 100)
             plt.plot(x_interval_for_fit, gaussian(x_interval_for_fit, *popt), label='fit')
             plt.legend()
-            plt.xlabel('pred - true / true')
+            plt.xlabel('pred - true [cm]')
             plt.ylabel('counts')
-            plt.title(r'$\mathrm{pred - true / true:}\ \mu=%.3f,\ \sigma=%.3f$' %(popt[0], popt[2]))
+            plt.title(r'$\mathrm{pred - true:}\ \mu=%.3f,\ \sigma=%.3f\ \mathrm{for~epoch}\ %g$' %(popt[0], popt[2], epoch))
             plt.grid(True)
-            plt.show()
-            plt.savefig('test.png')
+            plt.savefig("Figure_Random"+str(epoch)+".png")
+            plt.clf()
+#            plt.plot(true[i], pred[i], 'o', markersize=5, color='blue')
+#            plt.legend()
+#            plt.ylabel('Prediction (RECO) x-coordinate')
+#            plt.xlabel('Truth (GEN) x-coordinate')
+#            plt.savefig("Figure_Scatter2D_GenVsReco"+str(epoch)+".png")
+#            plt.clf()
+            #plt.show()
 
         except RuntimeError:
             print("Error - curve_fit failed")
-            plt.xlabel('pred - true / true')
+            plt.xlabel('pred - true')
             plt.ylabel('counts')
-            plt.title('pred - true / true fit failed')
+            plt.title('pred - true / true fit failed for epoch %g' %(epoch))
             plt.grid(True)
-            plt.show()
+            plt.savefig("Figure_Random"+str(epoch)+".png")
+            plt.clf()
+            #plt.show()
+
+      
+        for i in range(0, len(train_loss)): plt.plot(i+1, train_loss[i], 'o', color='black')
+        plt.legend()
+        plt.ylabel('train loss')
+        plt.xlabel('epoch')
+        plt.savefig("train_loss.png")
+        plt.clf()
 
         print ('np.mean(np.array(loss)) = ', np.mean(np.array(loss)))
         return np.mean(np.array(loss))
 
-checkpoint_dir = '/home/sapta/hgcalNtuple_Aug31_E10/checkpoint'
+checkpoint_dir = '/home/sapta/hgcalNtuple_Aug26/checkpoint'
 os.makedirs(checkpoint_dir, exist_ok=True)
 best_loss = 99999999
-for epoch in range(1, 2): #10
+test_loss = []
+for epoch in range(1, 201): #210
     print ('epoch:',epoch)
     train(epoch)
     loss_epoch = evaluate(epoch)
+    test_loss.append(loss_epoch)
     checkpoint_file = 'model_epoch_%03i.pth.tar' % ( epoch )
     torch.save(dict(model=model.state_dict()),
                    os.path.join(checkpoint_dir,checkpoint_file ))
@@ -192,3 +227,22 @@ for epoch in range(1, 2): #10
         print('new best test loss:',best_loss)
         torch.save(dict(model=model.state_dict()),
                    os.path.join(checkpoint_dir,'model_checkpoint_best.pth.tar' ))
+
+
+#for i in range(0, len(true)): plt.plot(true[i], pred[i], 'o', markersize=5, color='blue')
+##for i in range(0, len(true)): print('true[i] = ', true[i])
+##for i in range(0, len(true)): print('pred[i] = ', pred[i])
+#plt.legend()
+#plt.ylabel('Prediction (RECO) x-coordinate')
+#plt.xlabel('Truth (GEN) x-coordinate')
+#plt.savefig("Figure_Scatter2D_GenVsReco.png")        
+#plt.clf()
+
+#print('test_loss = ', test_loss)
+#for i in range(0, len(test_loss)): plt.plot(i+1, test_loss[i], 'o', color='blue')
+#plt.legend()
+#plt.ylabel('test loss')
+#plt.xlabel('epoch')
+#plt.savefig("test_loss.png")
+#plt.clf()
+        

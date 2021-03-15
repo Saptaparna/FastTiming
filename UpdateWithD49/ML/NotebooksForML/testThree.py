@@ -7,6 +7,9 @@ from datasets.graph import draw_sample
 import torch
 
 model_fname = '/home/sapta/model_categ_pho.pth.tar'
+#model_fname = '/home/sapta/hgcalNtuple_Aug26_8nn_siminfo/checkpoints/model_checkpoint_EdgeNetWithCategories_264403_5b5c05404f_sapta.best.pth.tar'
+#model_fname = '/home/sapta/hgcalNtuple_Aug26_8nn_siminfo/checkpoints/model_checkpoint_EdgeNetWithCategories_264403_5b5c05404f_sapta.best.pth.tar'
+
 from models.EdgeNetWithCategories import EdgeNetWithCategories
 mdl = EdgeNetWithCategories(input_dim=5, hidden_dim=64, output_dim=4, n_iters=6).to('cuda:0')
 mdl.load_state_dict(torch.load(model_fname)['model'])
@@ -46,7 +49,7 @@ def cluster_points(X,out):
     return had_clusters_sel,em_clusters_sel,mip_clusters_sel
 
 import glob
-flist = [filepath for filepath in glob.iglob(r'/home/sapta/hgcalNtuple_Aug31_E10/processed/data_*.pt')]
+flist = [filepath for filepath in glob.iglob(r'/home/sapta/hgcalNtuple_Aug26/processed/data_*.pt')]
 print (len(flist))
 
 import torch_geometric
@@ -64,7 +67,7 @@ for filename in tqdm(flist):
     y = data.y.cpu().numpy()
     out =np.argmax(pred_edges_np,axis=-1)
     z  = data.z.cpu().numpy()
-    true_y = z[1]
+    true_y = z[0]
     print ('true', true_y)
     #print ('len = ', len(cluster_points(X,out)[1].keys())) 
     if len(cluster_points(X,out)[1].keys())  > 1 :
@@ -73,7 +76,7 @@ for filename in tqdm(flist):
     for clus in cluster_points(X,out)[1].values(): print (X[clus])
     datacls.extend([torch_geometric.data.Data(x = torch.tensor(X[clus]), y=torch.tensor([true_y])) for clus in cluster_points(X,out)[1].values()])
     #print ('datacls', datacls)
-processed_dir = '/home/sapta/hgcalNtuple_Aug31_E10/clusters/'
+processed_dir = '/home/sapta/hgcalNtuple_Aug26/clusters/'
 import os
 import os.path as osp
 if not os.path.exists(processed_dir):
