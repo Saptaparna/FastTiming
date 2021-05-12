@@ -39,7 +39,7 @@ int makeComparison()
   hEnergyTotalRadiusTwo->SetTitle("");
   double max_new = hEnergyTotalRadiusTwo->GetMaximum();
   hEnergyTotalRadiusTwo->SetLineColor(kBlue);
-  hEnergyTotalRadiusTwo->SetLineWidth(2);
+  //hEnergyTotalRadiusTwo->SetLineWidth(2);
   hEnergyTotalRadiusTwo->SetFillColor(kBlue);  
   hEnergyTotalRadiusTwo->SetFillStyle(3004);
   hEnergyTotalRadiusTwo->SetMaximum(1.2*max_new);
@@ -61,7 +61,7 @@ int makeComparison()
   hEnergyTotalRadiusFive->SetTitle("");
   double max_old = hEnergyTotalRadiusFive->GetMaximum();
   hEnergyTotalRadiusFive->SetLineColor(kRed);
-  hEnergyTotalRadiusFive->SetLineWidth(2);
+  //hEnergyTotalRadiusFive->SetLineWidth(2);
   hEnergyTotalRadiusFive->SetFillColor(kRed);
   hEnergyTotalRadiusFive->SetFillStyle(3004);
   hEnergyTotalRadiusFive->Draw("HIST SAMES");
@@ -81,7 +81,7 @@ int makeComparison()
   hEnergyTotalRadiusTen->GetXaxis()->SetRangeUser(0.0, 100.0);
   hEnergyTotalRadiusTen->SetTitle("");
   hEnergyTotalRadiusTen->SetLineColor(kOrange-7);
-  hEnergyTotalRadiusTen->SetLineWidth(2);
+  //hEnergyTotalRadiusTen->SetLineWidth(2);
   hEnergyTotalRadiusTen->SetFillColor(kOrange-7);
   hEnergyTotalRadiusTen->SetFillStyle(3004);
   hEnergyTotalRadiusTen->Draw("HIST SAMES");
@@ -101,7 +101,7 @@ int makeComparison()
   hEnergyTotalRadiusFifty->GetXaxis()->SetRangeUser(0.0, 100.0);
   hEnergyTotalRadiusFifty->SetTitle("");
   hEnergyTotalRadiusFifty->SetLineColor(kGreen+3);
-  hEnergyTotalRadiusFifty->SetLineWidth(2);
+  //hEnergyTotalRadiusFifty->SetLineWidth(2);
   hEnergyTotalRadiusFifty->SetFillColor(kGreen+3);
   hEnergyTotalRadiusFifty->SetFillStyle(3004);
   hEnergyTotalRadiusFifty->Draw("HIST SAMES");
