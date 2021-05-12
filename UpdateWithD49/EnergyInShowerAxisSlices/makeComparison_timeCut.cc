@@ -43,7 +43,7 @@ int makeComparison()
   hEnergyTotalRadiusTwo->SetFillColor(kBlue);  
   hEnergyTotalRadiusTwo->SetFillStyle(3004);
   hEnergyTotalRadiusTwo->SetMaximum(1.2*max_new);
-  hEnergyTotalRadiusTwo->GetXaxis()->SetTitle("Total energy in a cynlinder with timing requirement [GeV]");
+  hEnergyTotalRadiusTwo->GetXaxis()->SetTitle("Total energy in a cylinder with timing requirement [GeV]");
   hEnergyTotalRadiusTwo->Draw("HIST SAMES");
   c1.Modified();
   c1.Update();
