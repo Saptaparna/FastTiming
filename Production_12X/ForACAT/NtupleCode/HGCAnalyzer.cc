@@ -23,6 +23,9 @@
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
+#include "FWCore/ServiceRegistry/interface/Service.h"
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
@@ -42,15 +45,12 @@
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 #include "TTree.h"
-//#include "Geometry/Records/interface/IdealGeometryRecord.h"
-//#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
-//#include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
-//#include "Geometry/HGCalCommonData/interface/HGCalGeometryMode.h"
-//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
-//#include "Geometry/HGCalCommonData/interface/HGCalDDDConstants.h"
-
-//#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
-//#include "Geometry/HGCalCommonData/interface/HGCalDDDConstants.h"
+#include "Geometry/Records/interface/IdealGeometryRecord.h"
+#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
+#include "Geometry/HGCalCommonData/interface/HGCalGeometryMode.h"
+#include "Geometry/HGCalGeometry/interface/HGCalGeometry.h"
+#include "Geometry/HGCalCommonData/interface/HGCalDDDConstants.h"
 
 //
 // class declaration
@@ -74,7 +74,7 @@ private:
   void beginJob() override;
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
-  virtual void fillRecHit(const DetId &detid, const float &fraction, const int &cluster_index_ = -1);
+  virtual void fillRecHit(const DetId &detid, const float &fraction, edm::ESHandle<HGCalGeometry> geoHandle, const int &cluster_index_ = -1);
   // ----parameters------
   bool rawRecHits_;
 
@@ -115,6 +115,15 @@ HGCAnalyzer::HGCAnalyzer(const edm::ParameterSet& iConfig)
     recHitsEE_ = consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCEERecHits"));
     recHitsFH_ = consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCHEFRecHits"));
     recHitsBH_ = consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCHEBRecHits")); 
+    usesResource(TFileService::kSharedResource);
+    edm::Service<TFileService> fs;
+    t_ = fs->make<TTree>("hgc","hgc");
+    t_->Branch("rechit_energy", &rechit_energy_);
+    t_->Branch("rechit_x", &rechit_x_);
+    t_->Branch("rechit_y", &rechit_y_);
+    t_->Branch("rechit_z", &rechit_z_);
+    t_->Branch("rechit_time", &rechit_time_);
+    t_->Branch("rechit_detid", &rechit_detid_);
 }
 
 HGCAnalyzer::~HGCAnalyzer() {
@@ -138,6 +147,13 @@ void HGCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   rechit_detid_.clear();
   storedRecHits_.clear();
   hitmap_.clear();
+
+  edm::ESHandle<HGCalGeometry> geoHandle_ee;
+  iSetup.get<IdealGeometryRecord>().get("HGCalEESensitive",geoHandle_ee);
+  edm::ESHandle<HGCalGeometry> geoHandle_fh;
+  iSetup.get<IdealGeometryRecord>().get("HGCalHESiliconSensitive",geoHandle_fh);
+  edm::ESHandle<HGCalGeometry> geoHandle_bh;
+  iSetup.get<IdealGeometryRecord>().get("HGCalHEScintillatorSensitive",geoHandle_bh);
 
   Handle<HGCRecHitCollection> recHitHandleEE;
   Handle<HGCRecHitCollection> recHitHandleFH;
@@ -173,7 +189,7 @@ void HGCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       const HGCalDetId detid = it_hit->detid();
       if (storedRecHits_.find(detid) == storedRecHits_.end()) 
       {
-        fillRecHit(detid, -1);
+        fillRecHit(detid, -1, geoHandle_ee);
       }
     }
     for (HGCRecHitCollection::const_iterator it_hit = rechitsFH.begin(); it_hit < rechitsFH.end();  ++it_hit) 
@@ -181,7 +197,7 @@ void HGCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       const HGCalDetId detid = it_hit->detid();
       if (storedRecHits_.find(detid) == storedRecHits_.end()) 
       {
-        fillRecHit(detid, -1);
+        fillRecHit(detid, -1, geoHandle_fh);
       }
     }
     for (HGCRecHitCollection::const_iterator it_hit = rechitsBH.begin(); it_hit < rechitsBH.end();  ++it_hit) 
@@ -189,26 +205,24 @@ void HGCAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       const HGCalDetId detid = it_hit->detid();
       if (storedRecHits_.find(detid) == storedRecHits_.end()) 
       {
-        fillRecHit(detid, -1);
+        fillRecHit(detid, -1, geoHandle_bh);
       }
     }
   }//rawRecHits_
   t_->Fill();
 }
 
-void HGCAnalyzer::fillRecHit(const DetId &detid, const float &fraction, const int &cluster_index_)
+//template <class T1>
+
+void HGCAnalyzer::fillRecHit(const DetId& detid, const float &fraction, edm::ESHandle<HGCalGeometry> geoHandle, const int &cluster_index_)
 {
   const HGCRecHit *hit = hitmap_[detid];
-  //edm::ESHandle<HGCalGeometry> geoHandle_ee;
-  //iSetup.get<IdealGeometryRecord>().get("HGCalEESensitive",geoHandle_ee);
-  //edm::ESHandle<HGCalGeometry> geoHandle_hef;
-  //iSetup.get<IdealGeometryRecord>().get("HGCalHESiliconSensitive",geoHandle_hef);
-  //const GlobalPoint position = geoHandle_ee->getPosition(detid);
+  const GlobalPoint& global = geoHandle->getPosition(detid);
   rechit_energy_.push_back(hit->energy());  
   rechit_detid_.push_back(detid);
-  //rechit_x_.push_back(position.x());
-  //rechit_y_.push_back(position.y());
-  //rechit_z_.push_back(position.z());
+  rechit_x_.push_back(global.x());
+  rechit_y_.push_back(global.y());
+  rechit_z_.push_back(global.z());
   rechit_time_.push_back(hit->time());
   storedRecHits_.insert(detid);
   detIdToRecHitIndexMap_[detid] = rechit_index_;
