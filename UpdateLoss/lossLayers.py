@@ -656,8 +656,11 @@ class LLFullObjectCondensation(LossLayerBase):
         valued_pids = tf.where(tf.math.logical_or(t_pid==22, tf.abs(t_pid) == 11), 0, valued_pids) #isEM
         valued_pids = tf.where(tf.abs(t_pid)==211, 1, valued_pids) #isHad
         valued_pids = tf.where(tf.abs(t_pid)==13, 2, valued_pids) #isMIP
-        valued_pids = tf.cast(valued_pids, tf.int32) #casting necessary, otherwise get type error
-        depth = len(valued_pids)
+        #valued_pids = tf.cast(valued_pids, tf.int32) #casting necessary, otherwise get type error
+        valued_pids = tf.cast(valued_pids, tf.int32)[:,0]
+        depth = pred_id.shape[1]
+        #print ("depth = ", depth)
+        #print ("valued_pids = ", valued_pids)
         truthclass  = tf.one_hot(valued_pids, depth)
         return tf.keras.metrics.categorical_crossentropy(truthclass, pred_id)
         #'''
