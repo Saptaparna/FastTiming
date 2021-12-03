@@ -662,7 +662,7 @@ class LLFullObjectCondensation(LossLayerBase):
         #print ("depth = ", depth)
         #print ("valued_pids = ", valued_pids)
         truthclass  = tf.one_hot(valued_pids, depth)
-        return tf.keras.metrics.categorical_crossentropy(truthclass, pred_id)
+        return tf.expand_dims(tf.keras.metrics.categorical_crossentropy(truthclass, pred_id), axis=1)
         #'''
         #to be implemented, t_pid is not one-hot encoded
         #'''
