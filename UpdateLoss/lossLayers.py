@@ -652,7 +652,7 @@ class LLFullObjectCondensation(LossLayerBase):
         return self.softclip(tloss, 6.) 
     
     def calc_classification_loss(self, t_pid, pred_id):
-        valued_pids = tf.zeros_like(t_pid)+3 #defaults to 2 as that is the highest showerType value
+        valued_pids = tf.zeros_like(t_pid)+3 #defaults to 3 as that is the highest showerType value
         valued_pids = tf.where(tf.math.logical_or(t_pid==22, tf.abs(t_pid) == 11), 0, valued_pids) #isEM
         valued_pids = tf.where(tf.abs(t_pid)==211, 1, valued_pids) #isHad
         valued_pids = tf.where(tf.abs(t_pid)==13, 2, valued_pids) #isMIP
